@@ -17,7 +17,7 @@ Channel::Channel(const std::string& name) : _name(name) {}
 
 Channel::~Channel(void) {}
 
-bool Channel::addClient(std::shared_ptr<Client> user, const std::string& providedKey = "") 
+bool Channel::addUser(std::shared_ptr<Client> user, const std::string& providedKey = "") 
 {
     const std::string& nick = user->getNickname();
 
@@ -27,26 +27,26 @@ bool Channel::addClient(std::shared_ptr<Client> user, const std::string& provide
     if (_hasKey && providedKey != _key)
         return false;
 
-    if (_hasUserLimit && _clients.size() >= _userLimit)
+    if (_hasUserLimit && _users.size() >= _userLimit)
         return false;
 
-    _clients[nick] = user;
+    _users[nick] = user;
     _invited.erase(nick);
     broadcast(nick + " has joined the channel");
 
     return true;
 }
 
-void Channel::removeClient(const std::string& nickname)
+void Channel::removeUser(const std::string& nickname)
 {
-    _clients.erase(nickname);
+    _users.erase(nickname);
     _operators.erase(nickname);
     broadcast(nickname + " has left the channel");
 }
 
 void Channel::addOperator(const std::string& nickname)
 {
-    if (_clients.count(nickname)) {
+    if (_users.count(nickname)) {
         _operators.insert(nickname);
     }
 }
@@ -127,7 +127,7 @@ void Channel::setMode(char mode, bool enable, const std::string& arg = "")
 
 void Channel::broadcast(const std::string& message, const std::string& sender)
 {
-    for (auto& [nick, user] : _clients) {
+    for (auto& [nick, user] : _users) {
         if (nick != sender)
             user->sendMessage("[" + _name + "] " + message);
     }

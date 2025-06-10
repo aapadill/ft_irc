@@ -33,7 +33,7 @@ class Channel {
 		bool _inviteOnly = false;
 		bool _topicRestricted = false;
 
-		std::unordered_map<std::string, std::shared_ptr<Client>>  _clients;
+		std::unordered_map<std::string, std::shared_ptr<Client>>  _users;
 		std::unordered_set<std::string>                         _operators;
 		std::unordered_set<std::string>                         _invited;
 		
@@ -46,8 +46,8 @@ class Channel {
 		~Channel(void);
 
 		//add or remove user
-		bool addClient(std::shared_ptr<Client> user, const std::string& providedKey = "");
-		void removeClient(const std::string& nickname);
+		bool addUser(std::shared_ptr<Client> user, const std::string& providedKey = "");
+		void removeUser(const std::string& nickname);
 
 		// methods related to operators
 		void addOperator(const std::string& nickname);
