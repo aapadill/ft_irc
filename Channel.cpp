@@ -11,13 +11,13 @@
 /* ************************************************************************** */
 
 #include "Channel.hpp"
-#include "Client.hpp"
+#include "User.hpp"
 
 Channel::Channel(const std::string& name) : _name(name) {}
 
 Channel::~Channel(void) {}
 
-bool Channel::addUser(std::shared_ptr<Client> user, const std::string& providedKey = "") 
+bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey = "") 
 {
     const std::string& nick = user->getNickname();
 

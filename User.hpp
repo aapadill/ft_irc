@@ -1,26 +1,30 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Client.cpp                                         :+:      :+:    :+:   */
+/*   Client.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: nmeintje <nmeintje@student.hive.fi>        +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/06/06 16:00:24 by nmeintje          #+#    #+#             */
-/*   Updated: 2025/06/06 16:00:27 by nmeintje         ###   ########.fr       */
+/*   Created: 2025/06/06 16:00:42 by nmeintje          #+#    #+#             */
+/*   Updated: 2025/06/06 16:00:44 by nmeintje         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Client.hpp"
+#pragma once
 
-Client::Client(std::string nick, int sock) : _nickname(std::move(nick)), _socket(sock) {}
+#include <string>
+#include <iostream>
 
-std::string Client::getNickname() const
-{ 
-    return _nickname;
-}
+class User {
 
-void Client::sendMessage(const std::string& message) 
-{
-        // send message to socket_
-        std::cout << "To [" << _nickname << "]: " << message << "\n";
-}
+    private:
+    
+        std::string _nickname;
+        int         _socket;
+
+    public:
+    
+        User(std::string nick, int sock);
+        std::string getNickname() const;
+        void sendMessage(const std::string& message);
+};
