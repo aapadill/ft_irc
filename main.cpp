@@ -1,16 +1,25 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        :::      ::::::::   */
-/*   main.cpp                                           :+:      :+:    :+:   */
-/*                                                    +:+ +:+         +:+     */
-/*   By: nmeintje <nmeintje@student.hive.fi>        +#+  +:+       +#+        */
-/*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/06/06 16:00:57 by nmeintje          #+#    #+#             */
-/*   Updated: 2025/06/06 16:00:59 by nmeintje         ###   ########.fr       */
-/*                                                                            */
-/* ************************************************************************** */
+#include "Server.hpp"
 
-#include "Channel.hpp"
+int main(int argc, char **argv)
+{
+	if (argc != 3)
+	{
+		std::cerr << "Usage: ./ircserv <port> <password>" << std::endl;
+		return 1;
+	}
 
-int main(int ac, char **av)
-{}
+	int port = std::atoi(argv[1]);
+	std::string password = argv[2];
+
+	try 
+	{
+		Server server(port, password);
+		server.run();
+	}
+	catch (const std::exception& e) 
+	{
+		std::cerr << "Fatal Error: " << e.what() << std::endl;
+	}
+
+	return 0;
+}

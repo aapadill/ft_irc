@@ -22,5 +22,7 @@ std::string User::getNickname() const
 void User::sendMessage(const std::string& message) 
 {
         // send message to socket_
-        std::cout << "To [" << _nickname << "]: " << message << "\n";
+        //std::cout << "To [" << _nickname << "]: " << message << "\n";
+		std::string msgWithCRLF = message + "\r\n";
+		send(_socket, msgWithCRLF.c_str(), msgWithCRLF.size(), 0);
 }

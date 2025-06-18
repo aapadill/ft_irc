@@ -17,7 +17,7 @@ Channel::Channel(const std::string& name) : _name(name) {}
 
 Channel::~Channel(void) {}
 
-bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey = "") 
+bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey) 
 {
     const std::string& nick = user->getNickname();
 
@@ -85,7 +85,7 @@ bool Channel::isInvited(const std::string& nickname) const
     return _invited.count(nickname);
 }
 
-void Channel::setMode(char mode, bool enable, const std::string& arg = "") 
+void Channel::setMode(char mode, bool enable, const std::string& arg) 
 {
     switch (mode) {
         case 'i':

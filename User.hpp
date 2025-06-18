@@ -14,6 +14,7 @@
 
 #include <string>
 #include <iostream>
+#include <sys/socket.h>
 
 class User {
 
