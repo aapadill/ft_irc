@@ -17,6 +17,14 @@
 # include "User.hpp"
 # include "Channel.hpp"
 
+#define YELLOW "\033[33m"
+#define RED "\033[31m"
+#define DEFAULT "\033[0;0m"
+#define BLUE "\033[1;34m"
+#define GREEN "\033[1;32m"
+#define CYAN "\033[1;36m"
+#define MAGENTA "\033[1;35m"
+
 class User;
 class Channel;
 class Parser;

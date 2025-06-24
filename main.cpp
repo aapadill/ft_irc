@@ -4,7 +4,7 @@ int main(int argc, char **argv)
 {
 	if (argc != 3)
 	{
-		std::cerr << "Usage: ./ircserv <port> <password>" << std::endl;
+		std::cerr << "Usage: ./ircserv <port> <password>\n" << std::endl;
 		return 1;
 	}
 
@@ -18,7 +18,7 @@ int main(int argc, char **argv)
 	}
 	catch (const std::exception& e) 
 	{
-		std::cerr << "Fatal Error: " << e.what() << std::endl;
+		std::cerr << RED << "Fatal Error: " << e.what() << DEFAULT << std::endl;
 	}
 
 	return 0;
