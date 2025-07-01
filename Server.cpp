@@ -80,6 +80,7 @@ void	Server::handleClientInput(int client_fd)
 
 void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed)
 {
+	/*
 	if (parsed.command == "JOIN" && !parsed.parameters.empty())
 	{
 		const std::string &channelName = parsed.parameters[0];
@@ -94,9 +95,20 @@ void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &pa
 		else
 			client->sendMessage("Error: Failed to join channel " + channelName);
 	}
+	*/
+	const std::string &command = parsed.command;
+	const std::vector<std::string> &params = parsed.parameters;
+	if (command == "KICK")
+		handleKICK(client, params);
+	else if (command == "INVITE")
+		handleINVITE(client, params);
+	else if (command == "TOPIC")
+		handleTOPIC(client, params);
+	else if (command == "MODE")
+		handleMODE(client, params);
 	else
 	{
-		client->sendMessage("Error: Command not handled: " + parsed.command);
+		client->sendNumericReply(421, parsed.command + " :Unknown command");
 	}
 }
 
@@ -147,3 +159,206 @@ void	Server::run() // Main server loop
 	}
 }
 
+void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (params.size() < 2)
+	{
+		client->sendNumericReply(461, "KICK :Not enough parameters");
+		return;
+	}
+	
+	const std::string& channelName = params[0];
+	const std::string& targetNick = params[1];
+	std::string reason;
+
+	if (params.size() > 2)
+	{
+		reason = params[2];
+	}
+	else
+	{
+		reason = client->getNickname();
+	}
+
+
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+	
+	Channel& channel = _channels.at(channelName);
+	
+	// check if user is operator
+	if (!channel.isOperator(client->getNickname()))
+	{
+		client->sendNumericReply(482, channelName + " :You're not channel operator");
+		return;
+	}
+	
+	// notify channel about kick
+	std::string kickMessage = ":" + client->getNickname() + " KICK " + channelName + " " + targetNick + " :" + reason;
+	channel.broadcast(kickMessage);
+	
+	// remove user from channel
+	channel.removeUser(targetNick);
+}
+
+void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (params.size() < 2)
+	{
+		client->sendNumericReply(461, "INVITE :Not enough parameters");
+		return;
+	}
+	
+	const std::string& targetNick = params[0];
+	const std::string& channelName = params[1];
+	
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+	
+	Channel& channel = _channels.at(channelName);
+	
+	// check if user is operator
+	if (!channel.isOperator(client->getNickname()))
+	{
+		client->sendNumericReply(482, channelName + " :You're not channel operator");
+		return;
+	}
+	
+	// find target user
+	std::shared_ptr<User> targetUser = nullptr;
+	for (const auto& [fd, user] : _clients)
+	{
+		if (user->getNickname() == targetNick)
+		{
+			targetUser = user;
+			break;
+		}
+	}
+	
+	if (!targetUser)
+	{
+		client->sendNumericReply(401, targetNick + " :No such nick/channel");
+		return;
+	}
+	
+	// send invite
+	channel.inviteUser(client->getNickname(), targetNick);
+	
+	// notify both users
+	client->sendNumericReply(341, targetNick + " " + channelName);
+	targetUser->sendMessage(":" + client->getNickname() + " INVITE " + targetNick + " " + channelName);
+}
+
+void Server::handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (params.empty())
+	{
+		client->sendNumericReply(461, "TOPIC :Not enough parameters");
+		return;
+	}
+	
+	const std::string& channelName = params[0];
+	
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+	
+	Channel& channel = _channels.at(channelName);
+	
+	if (params.size() == 1)
+	{
+		// get topic
+		std::string topic = channel.getTopic();
+		if (topic.empty())
+			client->sendNumericReply(331, channelName + " :No topic is set");
+		else
+			client->sendNumericReply(332, channelName + " :" + topic);
+	}
+	else
+	{
+		// set topic
+		const std::string& newTopic = params[1];
+		channel.setTopic(client->getNickname(), newTopic);
+		
+		// broadcast topic change
+		std::string topicMessage = ":" + client->getNickname() + " TOPIC " + channelName + " :" + newTopic;
+		channel.broadcast(topicMessage);
+		client->sendMessage(topicMessage); // also send to the user who set it
+	}
+}
+
+void Server::handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (params.empty())
+	{
+		client->sendNumericReply(461, "MODE :Not enough parameters");
+		return;
+	}
+	
+	const std::string& channelName = params[0];
+	
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+	
+	Channel& channel = _channels.at(channelName);
+	
+	// check if user is operator
+	if (!channel.isOperator(client->getNickname()))
+	{
+		client->sendNumericReply(482, channelName + " :You're not channel operator");
+		return;
+	}
+	
+	if (params.size() == 1)
+	{
+		// get channel modes (simplified)
+		client->sendNumericReply(324, channelName + " +nt");
+		return;
+	}
+	
+	const std::string& modeString = params[1];
+	size_t paramIndex = 2;
+	bool adding = true;
+	
+	for (char c : modeString)
+	{
+		if (c == '+')
+		{
+			adding = true;
+		}
+		else if (c == '-')
+		{
+			adding = false;
+		}
+		else
+		{
+			std::string arg = "";
+			if ((c == 'k' || c == 'l' || c == 'o') && paramIndex < params.size())
+			{
+				arg = params[paramIndex++];
+			}
+			
+			channel.setMode(c, adding, arg);
+			
+			// broadcast change of mode
+			std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + 
+									(adding ? "+" : "-") + c;
+			if (!arg.empty())
+				modeMessage += " " + arg;
+			
+			channel.broadcast(modeMessage);
+			client->sendMessage(modeMessage);
+		}
+	}
+}
