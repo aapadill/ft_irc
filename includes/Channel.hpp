@@ -18,6 +18,16 @@
 #include <memory>
 #include <iostream>
 
+
+/*PASS,
+	NICK,
+	USER,
+	CAP,
+	PING,
+	WHOIS,
+	WHO,
+	QUIT*/
+
 class User;
 
 class Channel {

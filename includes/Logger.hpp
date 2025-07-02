@@ -27,6 +27,13 @@
 #define MAGENTA "\033[1;35m"
 
 
+enum class LogLevel {
+	INFO,
+	WARNING,
+	ERROR,
+	DEBUG
+};
+
 class Logger {
 
 	private:
@@ -37,12 +44,5 @@ class Logger {
 	public:
 		~Logger();
 		
-		enum class LogLevel {
-			INFO,
-			WARNING,
-			ERROR,
-			DEBUG
-		};
-
-		void	log(LogLevel level, const std::string& msg);
+		static void	log(LogLevel level, const std::string& msg);
 };
