@@ -129,7 +129,18 @@ void Channel::broadcast(const std::string& message, const std::string& sender)
 {
     for (auto& [nick, user] : _users) {
         if (nick != sender)
-            user->sendMessage("[" + _name + "] " + message);
+        {
+            // assuming that if the message contains a colon, it is either a command or a message
+            if (message.find(":") != std::string::npos && message.find("") != std::string::npos)
+            {
+                user->sendMessage(":" + message);
+            }
+            // otherwise, it's a regular message
+            else
+            {
+                user->sendMessage("[" + _name + "] " + message);
+            }
+        }
     }
 }
 

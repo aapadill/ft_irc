@@ -51,6 +51,12 @@ class Server
 		void	removeClient(int client_fd);
 		void	dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed);
 
+		//commands //kick, invite, topic, mode (i, t, k, o, l)
+		void	handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+
 	public:
 		Server(int port, std::string const &password);
 		~Server();
