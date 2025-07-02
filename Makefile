@@ -10,31 +10,35 @@
 #                                                                              #
 # **************************************************************************** #
 
-NAME = ircserv
+NAME := ircserv
 
-CXX = c++
-CXXFLAGS += -Wall -Wextra -Werror -std=c++17 -Iincludes
+CXX := c++
+CXXFLAGS := -Wall -Wextra -Werror -std=c++17 -Iincludes
 
 SOURCE_DIR := sources
 OBJ_DIR := objects
 INCLUDE := include
 
-SRC := main.cpp Parser.cpp Server.cpp User.cpp Channel.cpp Logger.cpp Message.cpp
+SRC := main.cpp Parser.cpp Server.cpp User.cpp Channel.cpp Logger.cpp
 OBJ = $(addprefix $(OBJ_DIR)/, $(SRC:.cpp=.o))
+
+RM := rm -rf
+MKDIR := mkdir -p
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
 	$(CXX) $(OBJ) -o $(NAME)
 
-%.o: %.cpp
+$(OBJ_DIR)/%.o: $(SOURCE_DIR)/%.cpp #$(INCLUDE)
+	$(MKDIR) $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJ)
+	$(RM) $(OBJ_DIR)
 
 fclean: clean
-	rm -f $(NAME)
+	$(RM) $(NAME)
 
 re: fclean all
 
