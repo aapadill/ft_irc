@@ -11,14 +11,14 @@ Server::~Server()
 
 void	Server::setUpSocket()
 {
-	//log(LogLevel::INFO, "Init Server: Server creation ");
+	Logger::log(LogLevel::INFO, "Init Server: Server creation ");
 	_server_fd = socket(AF_INET, SOCK_STREAM, 0); // Creates TCP socket
 	if (_server_fd < 0)
 		throw std::runtime_error("Error: Failed to create socket.");
 	
 	fcntl(_server_fd, F_SETFL, O_NONBLOCK); // Making it non-blocking -> poll() can handle many clients
 
-	//log(LogLevel::INFO, "Init Server: Binding on port  " + std::to_string(_port));
+	Logger::log(LogLevel::INFO, "Init Server: Binding on port  " + std::to_string(_port));
 	sockaddr_in addr = {};
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(_port);
@@ -35,9 +35,9 @@ void	Server::setUpSocket()
 	struct pollfd server_pollfd = {_server_fd, POLLIN, 0};
 	_poll_fds.push_back(server_pollfd);
 
-	std::cout << "Server started on port " << _port << std::endl;
+	//std::cout << "Server started on port " << _port << std::endl;
 	// if we se logger instead
-	//log(LogLevel::INFO, "Server started on port " + std::to_string(_port));
+	Logger::log(LogLevel::INFO, "Server started on port " + std::to_string(_port));
 }
 
 void	Server::acceptNewClient()
@@ -54,8 +54,8 @@ void	Server::acceptNewClient()
 	std::string tempNick = "Guest" + std::to_string(client_fd); // Assign temporary nickname
 	_clients[client_fd] = std::make_shared<User>(tempNick, client_fd);
 
-	std::cout << "New client connected: FD " << client_fd << std::endl;
-	//log(LogLevel::INFO, "New client connected: FD " + std::to_string(client_fd));
+	//std::cout << "New client connected: FD " << client_fd << std::endl;
+	Logger::log(LogLevel::INFO, "New client connected: FD " + std::to_string(client_fd));
 }
 
 void	Server::handleClientInput(int client_fd)
@@ -80,8 +80,8 @@ void	Server::handleClientInput(int client_fd)
 	auto parsed = _parser->parse(input);
 	if (!parsed)
 	{
-		std::cout << "DEBUG!! Parsing failed for input: " << input << std::endl;
-		//Logger::log(LogLevel::DEBUG, "Parsing failed for input: " + input);
+		//std::cout << "DEBUG!! Parsing failed for input: " << input << std::endl;
+		Logger::log(LogLevel::DEBUG, "Parsing failed for input: " + input);
 
 		_clients[client_fd]->sendMessage("Error: Invalid command.");
 		return;
@@ -91,6 +91,7 @@ void	Server::handleClientInput(int client_fd)
 
 void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed)
 {
+	// The client commands should be parsed and dealt with here
 	/*
 	if (parsed.command == "JOIN" && !parsed.parameters.empty())
 	{
@@ -126,18 +127,15 @@ void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &pa
 void	Server::removeClient(int client_fd)
 {
 	std::vector<struct pollfd>::iterator it = _poll_fds.begin();
-	while (it != _poll_fds.end())
-	{
-		if (it->fd == client_fd)
-		{
+	while (it != _poll_fds.end()) {
+		if (it->fd == client_fd) {
 			_poll_fds.erase(it);
 			break;
 		}
 		it++;
 	}
 
-	if (_clients.count(client_fd))
-	{
+	if (_clients.count(client_fd)) {
 		std::string nickname = _clients[client_fd]->getNickname();
 		std::cout << "Client disconnected: " << nickname << " FD " << client_fd << std::endl;
 		_clients.erase(client_fd);
@@ -149,20 +147,18 @@ void	Server::run() // Main server loop
 {
 	setUpSocket();
 
-	while (true)
-	{
+	while (true) {
 		int ret = poll(_poll_fds.data(), _poll_fds.size(), -1); // Wait activity on any socket
 		if (ret < 0)
 			throw std::runtime_error("Error: Poll failed.");
 
 		size_t i = 0;
-		while (i < _poll_fds.size())
-		{
-			if (_poll_fds[i].revents & POLLIN)
-			{
-				if (_poll_fds[i].fd == _server_fd) // If new connection call acceptNewClient
+		while (i < _poll_fds.size()) {
+			if (_poll_fds[i].revents & POLLIN) {
+				if (_poll_fds[i].fd == _server_fd) {// If new connection call acceptNewClient
 					acceptNewClient();
-					//log(LogLevel::DEBUG, "Active clients " + std::to_string(_clients.size()));
+					Logger::log(LogLevel::DEBUG, "Active clients " + std::to_string(_clients.size()));
+				}
 				else
 					handleClientInput(_poll_fds[i].fd); // If an existing client call handleInput
 			}
@@ -173,8 +169,7 @@ void	Server::run() // Main server loop
 
 void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (params.size() < 2)
-	{
+	if (params.size() < 2) {
 		client->sendNumericReply(461, "KICK :Not enough parameters");
 		return;
 	}
@@ -183,18 +178,15 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 	const std::string& targetNick = params[1];
 	std::string reason;
 
-	if (params.size() > 2)
-	{
+	if (params.size() > 2) {
 		reason = params[2];
 	}
-	else
-	{
+	else {
 		reason = client->getNickname();
 	}
 
 
-	if (_channels.count(channelName) == 0)
-	{
+	if (_channels.count(channelName) == 0) {
 		client->sendNumericReply(403, channelName + " :No such channel");
 		return;
 	}
@@ -202,8 +194,7 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 	Channel& channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNickname()))
-	{
+	if (!channel.isOperator(client->getNickname())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
@@ -218,8 +209,7 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 
 void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (params.size() < 2)
-	{
+	if (params.size() < 2) {
 		client->sendNumericReply(461, "INVITE :Not enough parameters");
 		return;
 	}
@@ -227,8 +217,7 @@ void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::s
 	const std::string& targetNick = params[0];
 	const std::string& channelName = params[1];
 	
-	if (_channels.count(channelName) == 0)
-	{
+	if (_channels.count(channelName) == 0) {
 		client->sendNumericReply(403, channelName + " :No such channel");
 		return;
 	}
@@ -236,25 +225,21 @@ void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::s
 	Channel& channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNickname()))
-	{
+	if (!channel.isOperator(client->getNickname())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
 	
 	// find target user
 	std::shared_ptr<User> targetUser = nullptr;
-	for (const auto& [fd, user] : _clients)
-	{
-		if (user->getNickname() == targetNick)
-		{
+	for (const auto& [fd, user] : _clients) {
+		if (user->getNickname() == targetNick) {
 			targetUser = user;
 			break;
 		}
 	}
 	
-	if (!targetUser)
-	{
+	if (!targetUser) {
 		client->sendNumericReply(401, targetNick + " :No such nick/channel");
 		return;
 	}
@@ -269,24 +254,21 @@ void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::s
 
 void Server::handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (params.empty())
-	{
+	if (params.empty()) {
 		client->sendNumericReply(461, "TOPIC :Not enough parameters");
 		return;
 	}
 	
 	const std::string& channelName = params[0];
 	
-	if (_channels.count(channelName) == 0)
-	{
+	if (_channels.count(channelName) == 0) {
 		client->sendNumericReply(403, channelName + " :No such channel");
 		return;
 	}
 	
 	Channel& channel = _channels.at(channelName);
 	
-	if (params.size() == 1)
-	{
+	if (params.size() == 1) {
 		// get topic
 		std::string topic = channel.getTopic();
 		if (topic.empty())
@@ -294,8 +276,7 @@ void Server::handleTOPIC(std::shared_ptr<User> client, const std::vector<std::st
 		else
 			client->sendNumericReply(332, channelName + " :" + topic);
 	}
-	else
-	{
+	else {
 		// set topic
 		const std::string& newTopic = params[1];
 		channel.setTopic(client->getNickname(), newTopic);
@@ -309,16 +290,14 @@ void Server::handleTOPIC(std::shared_ptr<User> client, const std::vector<std::st
 
 void Server::handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (params.empty())
-	{
+	if (params.empty()) {
 		client->sendNumericReply(461, "MODE :Not enough parameters");
 		return;
 	}
 	
 	const std::string& channelName = params[0];
 	
-	if (_channels.count(channelName) == 0)
-	{
+	if (_channels.count(channelName) == 0) {
 		client->sendNumericReply(403, channelName + " :No such channel");
 		return;
 	}
@@ -326,14 +305,12 @@ void Server::handleMODE(std::shared_ptr<User> client, const std::vector<std::str
 	Channel& channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNickname()))
-	{
+	if (!channel.isOperator(client->getNickname())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
 	
-	if (params.size() == 1)
-	{
+	if (params.size() == 1) {
 		// get channel modes (simplified)
 		client->sendNumericReply(324, channelName + " +nt");
 		return;
@@ -343,21 +320,16 @@ void Server::handleMODE(std::shared_ptr<User> client, const std::vector<std::str
 	size_t paramIndex = 2;
 	bool adding = true;
 	
-	for (char c : modeString)
-	{
-		if (c == '+')
-		{
+	for (char c : modeString) {
+		if (c == '+') {
 			adding = true;
 		}
-		else if (c == '-')
-		{
+		else if (c == '-') {
 			adding = false;
 		}
-		else
-		{
+		else {
 			std::string arg = "";
-			if ((c == 'k' || c == 'l' || c == 'o') && paramIndex < params.size())
-			{
+			if ((c == 'k' || c == 'l' || c == 'o') && paramIndex < params.size()) {
 				arg = params[paramIndex++];
 			}
 			
