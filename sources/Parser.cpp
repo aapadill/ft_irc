@@ -6,14 +6,10 @@ Parser::~Parser() {}
 
 std::optional<ParsedInput> Parser::parse(std::string const &input)
 {
-	if (input.empty() || input.size() > 512)
+	if (input.empty() || input.size() > 512 || std::isspace(input[0]))
 		return std::nullopt; // std::optional<T> return for error
 
 	std::string line = input;
-
-	if (std::isspace(line[0]))
-		return std::nullopt;
-	
 	if (line.size() >= 2 && line.substr(line.size() - 2) == "\r\n")
 		line = line.substr(0, line.size() - 2);
 
@@ -22,61 +18,91 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 
 	if (line[0] == ':')
 	{
-		size_t space = line.find(' ');
-		if (space == std::string::npos)
+		auto prefix = extractPrefix(line, pos);
+		if (!prefix)
 			return std::nullopt;
-
-		std::string prefix_str = line.substr(1, space - 1);
-		std::regex PrefixRegex(R"(^([A-Za-z\[\]\\`_^{|}][-A-Za-z0-9\[\]\\`_^{|}]*)((![^@\s]+)@([^\s]+))?$|^[a-zA-Z0-9.-]+$)");
-		if (!std::regex_match(prefix_str, PrefixRegex))
-			return std::nullopt;
-
-		result.prefix = prefix_str;
-		pos = space + 1;
-		if (line[pos] == ' ')
-			return std::nullopt;
+		result.prefix = *prefix;
 	}
 		
-	size_t space = line.find(' ', pos);
-	if (space == std::string::npos)
-	{
-		result.command = line.substr(pos);
-		pos = line.length();
-	}
-	else
-	{
-		result.command = line.substr(pos, space - pos);
-		pos = space + 1;
-	}
+	result.command = extractCommand(line, pos);
 	std::transform(result.command.begin(), result.command.end(), result.command.begin(), ::toupper);
 
-	static const std::unordered_set<std::string> validCommand = { "PASS", "NICK", "USER", "JOIN", "PART", "PRIVMSG", "NOTICE", "QUIT", "KICK", "INVITE", "TOPIC", "MODE" };
-	if (validCommand.find(result.command) == validCommand.end())
+	result.commandType = stringToCommand(result.command);
+	if (result.commandType == CommandType::UNKNOWN)
 		return std::nullopt;
+
+	result.parameters = extractParameters(line, pos);
+	if (result.parameters.size() > 15)
+		return std::nullopt;
+	
+	return result;
+}
+
+bool isValidPrefix(const std::string &prefix)
+{
+	std::regex PrefixRegex(R"(^([A-Za-z\[\]\\`_^{|}][-A-Za-z0-9\[\]\\`_^{|}]*)((![^@\s]+)@([^\s]+))?$|^[a-zA-Z0-9.-]+$)");
+	return std::regex_match(prefix, PrefixRegex);
+}
+
+std::optional<std::string> extractPrefix(const std::string &line, size_t &pos)
+{
+	size_t space = line.find(' ', pos);
+	if (space == std::string::npos)
+		return std::nullopt;
+	
+	std::string prefix_str = line.substr(pos + 1, space - 1);
+	if (isValidPrefix(prefix_str))
+		return std::nullopt;
+	
+	pos = space + 1;
+	if (line[pos] == ' ')
+		return std::nullopt;
+
+	return prefix_str;
+
+}
+
+std::string extractCommand(const std::string &line, size_t &pos)
+{
+	size_t space = line.find(' ', pos);
+	std::string cmd;
+
+	if (space == std::string::npos) {
+		cmd = line.substr(pos);
+		pos = line.size();
+	} else {
+		cmd = line.substr(pos, space - pos);
+		pos = space + 1;
+	}
+	return cmd;
+}
+
+std::vector<std::string> extractParameters(const std::string &line, size_t &pos)
+{
+	std::vector<std::string> parameters;
 
 	while (pos < line.length())
 	{
 		if (line[pos] == ' ')
-			return std::nullopt;
+			break;
 
-		if (result.parameters.size() == 14 && line[pos] != ':')
-			return std::nullopt;
+		if (parameters.size() == 14 && line[pos] != ':')
+			break;
 
 		if (line[pos] == ':')
 		{
-			result.parameters.push_back(line.substr(pos + 1));
+			parameters.push_back(line.substr(pos + 1));
 			break ;
 		}
 
 		size_t next_space = line.find(' ', pos);
 		if (next_space == std::string::npos)
 		{
-			result.parameters.push_back(line.substr(pos));
+			parameters.push_back(line.substr(pos));
 			break;
 		}
-		result.parameters.push_back(line.substr(pos, next_space - pos));
+		parameters.push_back(line.substr(pos, next_space - pos));
 		pos = next_space + 1;
 	}
-	return result;
+	return parameters;
 }
-

@@ -1,5 +1,6 @@
 #include "Server.hpp"
 #include "Logger.hpp"
+#include "Client.hpp"
 
 Server::Server(int port, std::string const &password) : _port(port), _password(password), _parser(new Parser()) {}
 
@@ -62,65 +63,64 @@ void	Server::handleClientInput(int client_fd)
 {
 	char buffer[512];
 	ssize_t bytesRead = recv(client_fd, buffer, sizeof(buffer) - 1, 0);
-	if (bytesRead <= 0)
-	{
+	if (bytesRead <= 0) {
+		Logger::log(LogLevel::INFO, "Client disconnected or error on FD: " + std::to_string(client_fd));
 		removeClient(client_fd);
 		return;
 	}
 
 	buffer[bytesRead] = '\0';
 	std::string input(buffer);
-	//std::cout << "DEBUG!! handleClientInput called for FD: " << client_fd << std::endl;
-	//std::cout << "DEBUG!! bytesRead = " << bytesRead << std::endl;
-	//std::cout << "DEBUG!! input = " << input << std::endl;
 	Logger::log(LogLevel::DEBUG, "handleClientInput called for FD: " + std::to_string(client_fd));
 	Logger::log(LogLevel::DEBUG, "bytes read: " + std::to_string(bytesRead));
 	Logger::log(LogLevel::DEBUG, "input: " + input);
 
-	auto parsed = _parser->parse(input);
-	if (!parsed)
-	{
-		//std::cout << "DEBUG!! Parsing failed for input: " << input << std::endl;
-		Logger::log(LogLevel::DEBUG, "Parsing failed for input: " + input);
+	std::shared_ptr<Client> client = _clients[client_fd];
+	client->appendToBuffer(input);
 
-		_clients[client_fd]->sendMessage("Error: Invalid command.");
-		return;
+	while (client->hasCompleteMessage()) {
+		std::string message = client->getNextMessage();
+		Logger::log(LogLevel::DEBUG, "parsed message: " + message);
+		try {
+			auto parsed = _parser->parse(input);
+			if (!parsed) {
+				Logger::log(LogLevel::DEBUG, "Parsing failed for input: " + input);
+				client->sendMessage("Error: Invalid command.");
+				continue;
+			}
+			dispatchCommand(client, *parsed);
+		} catch (const std::exception& e) {
+			Logger::log(LogLevel::WARNING, "Exception during parsing : " + std::string(e.what()));
+			client->sendMessage("Error: Command Processing failed");
+		}
 	}
-	dispatchCommand(_clients[client_fd], *parsed);
 }
 
-void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed)
+void	Server::dispatchCommand(std::shared_ptr<Client> client, ParsedInput const &parsed)
 {
-	// The client commands should be parsed and dealt with here
-	/*
-	if (parsed.command == "JOIN" && !parsed.parameters.empty())
-	{
-		const std::string &channelName = parsed.parameters[0];
-
-		if (_channels.count(channelName) == 0)
-			_channels.emplace(std::piecewise_construct, std::forward_as_tuple(channelName), std::forward_as_tuple(channelName));
-
-		std::shared_ptr<User> userPtr = client;
-		auto it = _channels.find(channelName);
-		if (it != _channels.end() && it->second.addUser(userPtr))
-			client->sendMessage("Joined channel " + channelName);
-		else
-			client->sendMessage("Error: Failed to join channel " + channelName);
-	}
-	*/
 	const std::string &command = parsed.command;
-	const std::vector<std::string> &params = parsed.parameters;
-	if (command == "KICK")
-		handleKICK(client, params);
-	else if (command == "INVITE")
-		handleINVITE(client, params);
-	else if (command == "TOPIC")
-		handleTOPIC(client, params);
-	else if (command == "MODE")
-		handleMODE(client, params);
-	else
-	{
-		client->sendNumericReply(421, parsed.command + " :Unknown command");
+	
+	switch (parsed.commandType) {
+		case CommandType::JOIN:
+			handleJOIN(client, parsed);
+			break;
+		case CommandType::PART:
+			handlePART(client, parsed);
+			break;
+		case CommandType::KICK:
+			handleKICK(client, parsed);
+			break;
+		case CommandType::INVITE:
+			handleINVITE(client, parsed);
+			break;
+		case CommandType::TOPIC:
+			handleTOPIC(client, parsed);
+			break;
+		case CommandType::MODE:
+			handleMODE(client, parsed);
+			break;
+		default:
+			client->sendNumericReply(421, parsed.command + " :Unknown command");
 	}
 }
 
@@ -136,7 +136,7 @@ void	Server::removeClient(int client_fd)
 	}
 
 	if (_clients.count(client_fd)) {
-		std::string nickname = _clients[client_fd]->getNickname();
+		std::string nickname = _clients[client_fd]->getNick();
 		std::cout << "Client disconnected: " << nickname << " FD " << client_fd << std::endl;
 		_clients.erase(client_fd);
 	}
