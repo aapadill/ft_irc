@@ -28,6 +28,7 @@
 class User;
 class Channel;
 class Parser;
+class Client;
 struct ParsedInput;
 
 class Server
@@ -36,7 +37,7 @@ class Server
 		int _port; // Port number that server listens.
 		std::string _password; // Password required to connect
 		int	_server_fd; // File descriptor for the main server socket
-		std::map<int, std::shared_ptr<User>> _clients; // Stores connected clients using their socket file descriptor as the key
+		std::map<int, std::shared_ptr<Client>> _clients; // Stores connected clients using their socket file descriptor as the key
 		std::map<std::string, Channel> _channels; // Maps channel names to Channel objects
 		std::vector<struct pollfd> _poll_fds; // Monitoring multiple socket FDs
 
@@ -49,7 +50,7 @@ class Server
 		void	acceptNewClient();
 		void	handleClientInput(int client_fd);
 		void	removeClient(int client_fd);
-		void	dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed);
+		void	dispatchCommand(std::shared_ptr<Client> client, ParsedInput const &parsed);
 
 		//commands //kick, invite, topic, mode (i, t, k, o, l)
 		void	handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
