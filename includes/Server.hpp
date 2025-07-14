@@ -13,6 +13,7 @@
 # include <fcntl.h>
 # include <sys/socket.h>
 # include <arpa/inet.h>
+# include <sstream>
 # include "Parser.hpp"
 # include "User.hpp"
 # include "Channel.hpp"
@@ -30,6 +31,10 @@ class Channel;
 class Parser;
 class Client;
 struct ParsedInput;
+
+#define SERVER_CHANNEL_LIMIT 50
+#define USER_CHANNEL_LIMIT 10
+#define SERVER_USER_LIMIT 1000
 
 class Server
 {
@@ -53,10 +58,16 @@ class Server
 		void	dispatchCommand(std::shared_ptr<Client> client, ParsedInput const &parsed);
 
 		//commands //kick, invite, topic, mode (i, t, k, o, l)
-		void	handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		//void	handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleKICK(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		//void	handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleINVITE(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		//void	handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleTOPIC(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		//void	handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleMODE(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handlePART(std::shared_ptr<Client> client, const ParsedInput& parsed);
 
 	public:
 		Server(int port, std::string const &password);

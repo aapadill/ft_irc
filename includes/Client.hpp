@@ -30,7 +30,6 @@ class Client {
 		bool		_hasNick;
 		bool		_hasUser;
 		std::shared_ptr<User>	_user;
-		User		_user;
 
 		Client(const Client& copy) = delete;
 		

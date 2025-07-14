@@ -15,6 +15,16 @@
 
 Channel::Channel(const std::string& name) : _name(name) {}
 
+Channel::Channel(const std::string& name, std::shared_ptr<User> user)
+: _name(name), _topic(""), _hasKey(false), _key(""), _hasUserLimit(false), _userLimit(0),
+_inviteOnly(false), _topicRestricted(false)
+{
+    if (user) {
+        _users[user->getNickname()] = user;
+        _operators.insert(user->getNickname());
+    }
+}
+
 Channel::~Channel(void) {}
 
 bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey) 

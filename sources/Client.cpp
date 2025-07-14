@@ -102,7 +102,7 @@ void Client::sendMessage(const std::string& msg)
 
 std::string Client::getNick() const
 {
-    return _user.getNickname();
+    return _user->getNickname();
 }
 
 void Client::sendNumericReply(int code, const std::string &message)

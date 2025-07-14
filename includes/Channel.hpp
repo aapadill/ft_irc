@@ -18,16 +18,6 @@
 #include <memory>
 #include <iostream>
 
-
-/*PASS,
-	NICK,
-	USER,
-	CAP,
-	PING,
-	WHOIS,
-	WHO,
-	QUIT*/
-
 class User;
 
 class Channel {
@@ -52,6 +42,7 @@ class Channel {
 		Channel(void) = delete;
 		Channel(const Channel& copy) = delete;
 		Channel(const std::string& name);
+		Channel(const std::string& name, std::shared_ptr<User> user);
 		Channel &operator=(const Channel& other) = delete;
 		~Channel(void);
 
