@@ -430,7 +430,7 @@ void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::str
 		client->sendNumericReply(451, "USER :You have not registered (missing PASS)");
 		return;
 	}
-	if (params.size() < 4)
+	if (params.size() < 4 || params[3].empty() || params[3][0] != ':')
 	{
 		client->sendNumericReply(461, "USER :Not enough parameters");
 		return;
@@ -472,6 +472,11 @@ void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::str
 
 void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
+	if (params.empty())
+	{
+		client->sendNumericReply(461, " PASS: Not enough parameters");
+		return ;
+	}
 	std::cout << "DEBUG!! Excpected password: " << _password << std::endl;
 	std::cout << "DEBUG!! Received password: " << params[0] << std::endl;
 
@@ -487,11 +492,11 @@ void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::str
 		return;
 	}
 
-	if (params.empty())
+	/*if (params.empty())
 	{
 		client->sendNumericReply(461, "PASS :Not enough parameters");
 		return;
-	}
+	}*/
 
 	if (received != _password)
 	{

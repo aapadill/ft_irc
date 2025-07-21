@@ -150,9 +150,14 @@ bool	User::isValidUsername(const std::string& username)
 
 bool	User::isValidRealname(const std::string& realname)
 {
+	if (realname.empty())
+		return false;
+
 	for (char c : realname)
 	{
 		if (iscntrl(c))
+			return false;
+		if (!isalpha(c) && c != ' ')
 			return false;
 	}
 	return true;
