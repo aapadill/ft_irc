@@ -44,6 +44,11 @@ void Channel::removeUser(const std::string& nickname)
     broadcast(nickname + " has left the channel");
 }
 
+bool	Channel::hasUser(const std::string& nickname) const
+{
+	return _users.count(nickname) > 0;
+}
+
 void Channel::addOperator(const std::string& nickname)
 {
     if (_users.count(nickname)) {

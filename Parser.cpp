@@ -77,6 +77,11 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 		result.parameters.push_back(line.substr(pos, next_space - pos));
 		pos = next_space + 1;
 	}
+
+	if (result.command == "USER")
+	{
+		if (result.parameters.size() != 4 || input.find(':') == std::string::npos)
+			return std::nullopt;
+	}
 	return result;
 }
-

@@ -50,6 +50,18 @@ bool User::isRegistered() const
     return _registered;
 }
 
+void	User::checkRegisteration()
+{
+	if (isAuthenticated() && !isRegistered() && !_nickname.empty() && !_username.empty())
+	{
+		setRegistered(true);
+		sendNumericReply(001, ":Welcome to the IRC Server " + _nickname);
+		sendNumericReply(002, ":Your host is ircserver, running version ft_irc");
+		sendNumericReply(003, ":This server was created " + getCurrentDate());
+		sendNumericReply(004, ":irc.server.com ft_irc <supported user modes> <supported channel modes>");
+	}
+}
+
 void User::setNickname(const std::string& nick)
 {
     _nickname = nick;
@@ -95,4 +107,53 @@ void User::sendNumericReply(int code, const std::string& message)
 	std::string reply = ":" + std::string("irc.server.com") + " " + //or localhost?
 						std::to_string(code) + " " + _nickname + " " + message;
 	sendMessage(reply);
+}
+
+std::string	User::getCurrentDate() const
+{
+	std::time_t now = std::time(nullptr);
+	std::tm* localTime = std::localtime(&now);
+
+	std::ostringstream oss;
+	oss << std::asctime(localTime);
+
+	std::string dateStr = oss.str();
+	dateStr.erase(dateStr.find_last_not_of("\n") + 1);
+	return dateStr;
+}
+
+bool	User::isValidNickname(const std::string& nickname)
+{
+	if (nickname.empty() || isdigit(nickname[0] || nickname[0] == '-'))
+		return false;
+	if (nickname.length() > 9)
+		return false;
+	for (char c : nickname)
+	{
+		if (!isalnum(c) && std::string("-[]\\`^^{}").find(c) == std::string::npos)
+			return false;
+	}
+	return true;
+}
+
+bool	User::isValidUsername(const std::string& username)
+{
+	if (username.empty())
+		return false;
+	for (char c : username)
+	{
+		if (!isalnum(c) && c != '_')
+			return false;
+	}
+	return true;
+}
+
+bool	User::isValidRealname(const std::string& realname)
+{
+	for (char c : realname)
+	{
+		if (iscntrl(c))
+			return false;
+	}
+	return true;
 }
