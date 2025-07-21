@@ -193,20 +193,20 @@ void Server::handleKICK(std::shared_ptr<Client> client, const ParsedInput& parse
 		return;
 	}
 	
-	Channel& channel = _channels.at(channelName);
+	std::shared_ptr<Channel> channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNick())) {
+	if (!channel->isOperator(client->getNick())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
 	
 	// notify channel about kick
 	std::string kickMessage = ":" + client->getNick () + " KICK " + channelName + " " + targetNick + " :" + reason;
-	channel.broadcast(kickMessage);
+	channel->broadcast(kickMessage);
 	
 	// remove user from channel
-	channel.removeUser(targetNick);
+	channel->removeUser(targetNick);
 }
 // updated handleinvite, to take whole ParsedInput struct instead of just params
 void Server::handleINVITE(std::shared_ptr<Client> client, const ParsedInput& parsed)
@@ -226,10 +226,10 @@ void Server::handleINVITE(std::shared_ptr<Client> client, const ParsedInput& par
 		return;
 	}
 	
-	Channel& channel = _channels.at(channelName);
+	std::shared_ptr<Channel> channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNick())) {
+	if (!channel->isOperator(client->getNick())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
@@ -249,7 +249,7 @@ void Server::handleINVITE(std::shared_ptr<Client> client, const ParsedInput& par
 	}
 	
 	// send invite
-	channel.inviteUser(client->getNick(), targetNick);
+	channel->inviteUser(client->getNick(), targetNick);
 	
 	// notify both users
 	client->sendNumericReply(341, targetNick + " " + channelName);
@@ -273,11 +273,11 @@ void Server::handleTOPIC(std::shared_ptr<Client> client, const ParsedInput& pars
 		return;
 	}
 	
-	Channel& channel = _channels.at(channelName);
+	std::shared_ptr<Channel> channel = _channels.at(channelName);
 	
 	if (params.size() == 1) {
 		// get topic
-		std::string topic = channel.getTopic();
+		std::string topic = channel->getTopic();
 		if (topic.empty())
 			client->sendNumericReply(331, channelName + " :No topic is set");
 		else
@@ -286,11 +286,11 @@ void Server::handleTOPIC(std::shared_ptr<Client> client, const ParsedInput& pars
 	else {
 		// set topic
 		const std::string& newTopic = params[1];
-		channel.setTopic(client->getNick(), newTopic);
+		channel->setTopic(client->getNick(), newTopic);
 		
 		// broadcast topic change
 		std::string topicMessage = ":" + client->getNick() + " TOPIC " + channelName + " :" + newTopic;
-		channel.broadcast(topicMessage);
+		channel->broadcast(topicMessage);
 		client->sendMessage(topicMessage); // also send to the user who set it
 	}
 }
@@ -312,10 +312,10 @@ void Server::handleMODE(std::shared_ptr<Client> client, const ParsedInput& parse
 		return;
 	}
 	
-	Channel& channel = _channels.at(channelName);
+	std::shared_ptr<Channel> channel = _channels.at(channelName);
 	
 	// check if user is operator
-	if (!channel.isOperator(client->getNick())) {
+	if (!channel->isOperator(client->getNick())) {
 		client->sendNumericReply(482, channelName + " :You're not channel operator");
 		return;
 	}
@@ -343,7 +343,7 @@ void Server::handleMODE(std::shared_ptr<Client> client, const ParsedInput& parse
 				arg = params[paramIndex++];
 			}
 			
-			channel.setMode(c, adding, arg);
+			channel->setMode(c, adding, arg);
 			
 			// broadcast change of mode
 			std::string modeMessage = ":" + client->getNick() + " MODE " + channelName + " " + 
@@ -351,7 +351,7 @@ void Server::handleMODE(std::shared_ptr<Client> client, const ParsedInput& parse
 			if (!arg.empty())
 				modeMessage += " " + arg;
 			
-			channel.broadcast(modeMessage);
+			channel->broadcast(modeMessage);
 			client->sendMessage(modeMessage);
 		}
 	}
@@ -368,8 +368,26 @@ std::vector<std::string> split(const std::string& input, char delimiter)
 	return result;
 }
 
+bool isValidChannelName(const std::string& name)
+{
+	if (name.empty())
+		return false;
+
+	if (name[0] != '#' && name[0] != '&')
+		return false;
+	
+	if (name.length() > 50)
+		return false;
+	
+	for (char c : name) {
+		if (c == ' ' || c == ',' || c < 0x20)
+			return false;
+	}
+	return true;
+}
+
 /* handleJOIN:
-	- needs a vallid channel argument
+	- needs a valid channel argument
 */
 void	Server::handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
@@ -388,47 +406,51 @@ void	Server::handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parse
 		std::string name = channelNames[i];
 		std::string key = (i < keys.size()) ? keys[i] : "";
 
-		if (isValidChannelName(name)) {
+		if (!isValidChannelName(name)) {
 			client->sendNumericReply(476, name + " :Bad channel mask");
 			continue;
 		}
 		std::shared_ptr<Channel> channel;
+		auto it = _channels.find(name);
 
 		// create channel if it doesn't exist
-		if (_channels.find(name) == _channels.end()) {
-			channel = std::make_shared<Channel>(name, user);
+		if (it == _channels.end()) {
+			channel = std::make_shared<Channel>(name, client);
 			_channels[name] = channel;
 
-			channel->addUser(client);
+			if (!channel->addUser(client->getUser(), key)) {
+				client->sendNumericReply(403, name + " :Unable to join channel");
+			}
 			channel->addOperator(client->getNick());
 			
-			if (!key.empty())
-				channel->setKey(key);
 		}
 		else {
-			channel = _channels[name];
+			channel = it->second;;
 
 			if (channel->isUser(client->getNick())) {
 				client->sendNumericReply(443, name + " :is already on channel");
 				continue;
 			}
-			if (channel->isInviteOnly() && !channel->isInvited(client->getNick())) {
-				client->sendNumericReply(473, name + " :Cannot join channel (+i)");
-				continue;
+			if (!channel->addUser(client->getUser(), key)) {
+				if (channel->isInviteOnly() && !channel->isInvited(client->getNick())) {
+					client->sendNumericReply(473, name + " :Cannot join channel (+i)");
+					continue;
+				}
+				else if (channel->hasKey() && channel->getKey() != key) {
+					client->sendNumericReply(475, name + " :Cannot join channel (+k)");
+					continue;
+				}
+				else if (channel->isFull()) {
+					client->sendNumericReply(471, name + " :Cannot join channel (+l)");
+					continue;
+				}
+				else
+					client->sendNumericReply(403, name + " :Unable to join channel");
 			}
-			if (channel->hasKey() && channel->getKey() != key) {
-				client->sendNumericReply(475, name + " :Cannot join channel (+k)");
-				continue;
-			}
-			if (channel->isFull()) {
-				client->sendNumericReply(471, name + " :Cannot join channel (+l)");
-				continue;
-			}
-			channel->addUser(client);
+			channel->removeInvite(client->getNick());
 		}
-
 		// Send JOIN reply
-		client->send(":" + client->getPrefix() + " JOIN :" + name + "\r\n");
+		client->sendMessage(":" + client->getUser()->getPrefix() + " JOIN " + name + "\r\n");
 
 		// Send topic
 		if (!channel->getTopic().empty())
@@ -438,6 +460,8 @@ void	Server::handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parse
 		std::string namesReply = channel->getUserListWithPrefixes();
 		client->sendNumericReply(353, "= " + name + " :" + namesReply);
 		client->sendNumericReply(366, name + " :End of /NAMES list");
+
+		channel->broadcast(":" + client->getUser()->getPrefix() + " JOIN " + name + "\r\n", client->getUser()->getNickname());
 	}
 }
 

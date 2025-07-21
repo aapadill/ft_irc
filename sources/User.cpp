@@ -35,6 +35,11 @@ std::string User::getRealname() const
     return _realname;
 }
 
+std::string User::getPrefix() const
+{
+    return _nickname + "!" + _username + "@localhost";
+}
+
 int User::getSocket() const
 {
     return _socket;

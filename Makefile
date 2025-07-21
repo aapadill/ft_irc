@@ -19,7 +19,7 @@ SOURCE_DIR := sources
 OBJ_DIR := objects
 INCLUDE := include
 
-SRC := main.cpp Parser.cpp Server.cpp User.cpp Channel.cpp Logger.cpp
+SRC := main.cpp Parser.cpp Server.cpp User.cpp Channel.cpp Logger.cpp Client.cpp Command.cpp
 OBJ = $(addprefix $(OBJ_DIR)/, $(SRC:.cpp=.o))
 
 RM := rm -rf

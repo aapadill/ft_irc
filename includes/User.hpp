@@ -32,6 +32,7 @@ class User {
         std::string getNickname() const;
         std::string getUsername() const;
         std::string getRealname() const;
+        std::string getPrefix() const;
 
         int getSocket() const;
         bool isAuthenticated() const;

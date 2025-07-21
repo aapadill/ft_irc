@@ -79,12 +79,14 @@ void Client::markHasUser()
 
 void Client::tryRegister(const std::string& nick, const std::string& user, const std::string& real)
 {
-    if (isRegistered() && !_user) {
+    if (_hasNick && _hasUser && !_user) {
         _user = std::make_shared<User>(nick, _fd);
         _user->setUsername(user);
         _user->setRealname(real);
         _user->setRegistered(true);
     }
+
+    sendNumericReply(001, nick + " :Welcome to the IRC network");
 }
 
 std::shared_ptr<User> Client::getUser()

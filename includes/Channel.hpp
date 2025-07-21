@@ -46,9 +46,11 @@ class Channel {
 		Channel &operator=(const Channel& other) = delete;
 		~Channel(void);
 
-		//add or remove user
+		// methods related to users
 		bool addUser(std::shared_ptr<User> user, const std::string& providedKey = "");
 		void removeUser(const std::string& nickname);
+		bool isUser(const std::string& nickname) const;
+		std::string getUserListWithPrefixes() const;
 
 		// methods related to operators
 		void addOperator(const std::string& nickname);
@@ -62,8 +64,16 @@ class Channel {
 		// for if channel is invite only/private
 		void inviteUser(const std::string& by, const std::string& target);
 		bool isInvited(const std::string& nickname) const;
+		bool isInviteOnly() const;
+		void removeInvite(const std::string& nickname);
+
+		// passwords
+		bool hasKey() const;
+		const std::string& getKey() const;
+		void setKey(const std::string& key);
 
 		void setMode(char mode, bool enable, const std::string& arg = "");
 		void broadcast(const std::string& message, const std::string& sender = "");
 		std::string getName(void) const;
+		bool isFull() const;
 };

@@ -43,7 +43,7 @@ class Server
 		std::string _password; // Password required to connect
 		int	_server_fd; // File descriptor for the main server socket
 		std::map<int, std::shared_ptr<Client>> _clients; // Stores connected clients using their socket file descriptor as the key
-		std::map<std::string, Channel> _channels; // Maps channel names to Channel objects
+		std::map<std::string, std::shared_ptr<Channel>> _channels; // Maps channel names to Channel objects
 		std::vector<struct pollfd> _poll_fds; // Monitoring multiple socket FDs
 
 		Parser* _parser;

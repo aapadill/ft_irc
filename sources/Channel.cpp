@@ -31,6 +31,11 @@ bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey
 {
     const std::string& nick = user->getNickname();
 
+    if (_users.empty() && !_hasKey && !providedKey.empty()) {
+        _key = providedKey;
+        _hasKey = true;
+    }
+
     if (_inviteOnly && !isInvited(nick))
         return false;
 
@@ -157,4 +162,58 @@ void Channel::broadcast(const std::string& message, const std::string& sender)
 std::string Channel::getName(void) const
 {
     return _name;
+}
+
+bool Channel::hasKey() const
+{
+    return _hasKey;
+}
+
+const std::string& Channel::getKey() const
+{
+    return _key;
+}
+
+bool Channel::isInviteOnly() const
+{
+    return _inviteOnly;
+}
+
+bool Channel::isUser(const std::string& nickname) const
+{
+    return _users.find(nickname) != _users.end();
+}
+
+bool Channel::isFull() const 
+{
+    return _hasUserLimit && _users.size() >= _userLimit;
+}
+
+void Channel::removeInvite(const std::string& nickname)
+{
+    _invited.erase(nickname);
+}
+
+std::string Channel::getUserListWithPrefixes() const
+{
+    std::string list;
+
+    for (const auto& pair: _users) {
+        const std::string& nick = pair.first;
+
+        if (_operators.count(nick))
+            list += "@" + nick + " ";
+        else
+            list += nick + " ";
+    }
+    if (!list.empty())
+        list.pop_back();
+    
+    return list;
+}
+
+void Channel::setKey(const std::string& key)
+{
+    _key = key;
+    _hasKey = true;
 }
