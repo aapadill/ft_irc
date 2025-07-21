@@ -1,0 +1,17 @@
+# .github/workflows/ci.yml
+name: Build & Test ft_irc
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build & run full test-suite
+        run: |
+          chmod +x tests/run_tests.sh
+          ./tests/run_tests.sh
