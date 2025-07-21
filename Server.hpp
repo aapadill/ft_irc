@@ -48,6 +48,12 @@ class Server
 		void	handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleTOPIC(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleMODE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleNICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleUSER(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handlePASS(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleNOTICE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params);
 
 	public:
 		Server(int port, std::string const &password);

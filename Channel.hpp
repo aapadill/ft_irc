@@ -48,6 +48,7 @@ class Channel {
 		//add or remove user
 		bool addUser(std::shared_ptr<User> user, const std::string& providedKey = "");
 		void removeUser(const std::string& nickname);
+		bool	hasUser(const std::string& nickname) const;
 
 		// methods related to operators
 		void addOperator(const std::string& nickname);
@@ -65,4 +66,5 @@ class Channel {
 		void setMode(char mode, bool enable, const std::string& arg = "");
 		void broadcast(const std::string& message, const std::string& sender = "");
 		std::string getName(void) const;
+
 };

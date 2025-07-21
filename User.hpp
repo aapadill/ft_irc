@@ -15,6 +15,8 @@
 #include <string>
 #include <iostream>
 #include <sys/socket.h>
+#include <ctime>
+#include <sstream>
 
 class User {
 
@@ -42,6 +44,7 @@ class User {
         void setRealname(const std::string& real);
         void setAuthenticated(bool auth);
         void setRegistered(bool reg);
+		void	checkRegisteration();
 
         void appendToBuffer(const std::string& data);
         std::string extractFromBuffer();
@@ -49,4 +52,10 @@ class User {
 
         void sendMessage(const std::string& message);
         void sendNumericReply(int code, const std::string& message);
+
+		std::string	getCurrentDate() const;
+
+		bool	isValidNickname(const std::string& nickname);
+		bool	isValidUsername(const std::string& username);
+		bool	isValidRealname(const std::string& realname);
 };

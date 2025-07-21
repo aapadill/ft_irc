@@ -14,8 +14,10 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 	if (std::isspace(line[0]))
 		return std::nullopt;
 	
-	if (line.size() >= 2 && line.substr(line.size() - 2) == "\r\n")
-		line = line.substr(0, line.size() - 2);
+	/*if (line.size() >= 2 && line.substr(line.size() - 2) == "\r\n")
+		line = line.substr(0, line.size() - 2);*/
+	line.erase(line.find_last_not_of("\r\n") + 1);
+
 
 	ParsedInput result;
 	size_t pos = 0;
@@ -50,13 +52,15 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 	}
 	std::transform(result.command.begin(), result.command.end(), result.command.begin(), ::toupper);
 
-	static const std::unordered_set<std::string> validCommand = { "PASS", "NICK", "USER", "JOIN", "PART", "PRIVMSG", "NOTICE", "QUIT", "KICK", "INVITE", "TOPIC", "MODE" };
+	/*static const std::unordered_set<std::string> validCommand = { "PASS", "NICK", "USER", "JOIN", "PART", "PRIVMSG", "NOTICE", "QUIT", "KICK", "INVITE", "TOPIC", "MODE" };
 	if (validCommand.find(result.command) == validCommand.end())
-		return std::nullopt;
+		return nullopt;*/
 
 	while (pos < line.length())
 	{
-		if (line[pos] == ' ')
+		if (pos >= line.length())
+			break;
+		if (pos < line.length() && line[pos] == ' ')
 			return std::nullopt;
 
 		if (result.parameters.size() == 14 && line[pos] != ':')
@@ -77,6 +81,12 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 		result.parameters.push_back(line.substr(pos, next_space - pos));
 		pos = next_space + 1;
 	}
+
+	for (size_t i = 0; i < result.parameters.size(); ++i)
+	{
+		if (!result.parameters[i].empty())
+			result.parameters[i].erase(result.parameters[i].find_last_not_of("\r\n") + 1);
+	}
+
 	return result;
 }
-
