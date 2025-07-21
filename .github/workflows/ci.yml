@@ -1,5 +1,4 @@
-# .github/workflows/ci.yml
-name: Build & Test ft_irc
+name: CI
 
 on:
   pull_request:
@@ -9,9 +8,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Build & run full test-suite
+      - name: Install dependencies
         run: |
-          chmod +x tests/run_tests.sh
-          ./tests/run_tests.sh
+          sudo apt-get update
+          sudo apt-get install -y netcat-openbsd
+
+      - name: Make tests executable
+        run: chmod +x tests/run_tests.sh
+
+      - name: Run ft_irc test suite
+        shell: bash
+        env:
+          # Override if you start your server with a different password
+          IRC_PASS: secret42
+        run: tests/run_tests.sh

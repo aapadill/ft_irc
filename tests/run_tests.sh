@@ -1,36 +1,40 @@
 #!/usr/bin/env bash
 ###############################################################################
-# run_tests.sh – POSIX-safe CI suite for 42 ft_irc (with auto-cleanup)
+# run_tests.sh – POSIX‐safe CI suite for 42 ft_irc
+# (auto-cleanup, port‐wait, env‐driven password)
 ###############################################################################
-# Track failures manually; do not abort on first error
 PORT=6667
-PASS="secret42"
+# Pick up password from $IRC_PASS, or fall back to secret42
+PASS="${IRC_PASS:-secret42}"
 SERVER_BIN="./ircserv"
 STARTUP_TIMEOUT=2
 CLIENT_TIMEOUT=4
 failures=0
 
-log()  { printf "\e[34m[INFO]\e[0m %s\n" "$*"; }
-pass() { printf "\e[32m[PASS]\e[0m %s\n" "$1"; }
-fail() { printf "\e[31m[FAIL]\e[0m %s\n" "$1"; failures=$((failures+1)); }
+log()  { printf "[INFO]  %s\n" "$*"; }
+pass() { printf "[PASS]  %s\n" "$1"; }
+fail() { printf "[FAIL]  %s\n" "$1"; failures=$((failures+1)); }
 
-# Clean up any leftovers from previous runs
+# cleanup any leftovers
 rm -f *.out /tmp/ft_irc.log
 
-# Run a single test: $1=name, $2=grep-regex, $3=here-doc commands (with \r\n)
+# helper to run one test
 run_test() {
-  name="$1"; pattern="$2"; cmds="$3"
+  local name="$1" pattern="$2" cmds="$3"
   log "Running test: $name"
   tmp=$(mktemp)
-  printf "%b" "$cmds" \
-    | timeout "${CLIENT_TIMEOUT}" nc -C localhost "$PORT" >"$tmp" 2>&1
-  case $? in
-    124)
-      fail "$name (timeout after ${CLIENT_TIMEOUT}s)"
-      rm -f "$tmp"
-      return
-      ;;
-  esac
+  # fire nc in background
+  ( printf "%b" "$cmds" | nc localhost "$PORT" >"$tmp" 2>&1 ) &
+  nc_pid=$!
+  sleep "$CLIENT_TIMEOUT"
+  if kill -0 "$nc_pid" 2>/dev/null; then
+    kill "$nc_pid" 2>/dev/null
+    wait "$nc_pid" 2>/dev/null
+    fail "$name (timeout after ${CLIENT_TIMEOUT}s)"
+    rm -f "$tmp"
+    return
+  fi
+  wait "$nc_pid" 2>/dev/null
   if grep -qE "$pattern" "$tmp"; then
     pass "$name"
   else
@@ -47,13 +51,22 @@ run_test() {
 log "Building…"
 make -j
 
-log "Starting server on port $PORT"
+log "Starting server on port $PORT (password='$PASS')"
 "$SERVER_BIN" "$PORT" "$PASS" >/tmp/ft_irc.log 2>&1 &
 SERVER_PID=$!
-sleep "$STARTUP_TIMEOUT"
 
-# Ensure both server and artifacts get cleaned up on exit
-trap 'kill $SERVER_PID 2>/dev/null || true; rm -f *.out /tmp/ft_irc.log' EXIT
+# wait up to 5s for TCP port to open
+for i in $(seq 1 5); do
+  if ( exec 3<>/dev/tcp/localhost/$PORT ) 2>/dev/null; then
+    log "Port $PORT is open—continuing"
+    break
+  fi
+  log "  waiting for port $PORT… ($i/5)"
+  sleep 1
+done
+
+# cleanup on exit
+trap 'kill $SERVER_PID 2>/dev/null; rm -f *.out /tmp/ft_irc.log' EXIT
 
 ###############################################################################
 # 1. Registration handshake
