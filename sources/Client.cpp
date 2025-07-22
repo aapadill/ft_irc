@@ -29,6 +29,15 @@ Client &Client::operator=(const Client& other)
     return *this;
 }
 
+/*Client::Client(int fd)
+{
+    _fd = fd;
+    _recvBuffer = "";
+    _hasNick = false;
+    _hasUser = false;
+    _user = nullptr;
+}*/
+
 Client::~Client()
 {
     if (_fd != -1) {

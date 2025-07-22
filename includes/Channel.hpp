@@ -51,6 +51,7 @@ class Channel {
 		void removeUser(const std::string& nickname);
 		bool isUser(const std::string& nickname) const;
 		std::string getUserListWithPrefixes() const;
+		bool	hasUser(const std::string& nickname) const;
 
 		// methods related to operators
 		void addOperator(const std::string& nickname);

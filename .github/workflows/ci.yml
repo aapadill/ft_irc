@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y netcat-openbsd
+
+      - name: Make tests executable
+        run: chmod +x tests/run_tests.sh
+
+      - name: Run ft_irc test suite
+        shell: bash
+        env:
+          # Override if you start your server with a different password
+          IRC_PASS: secret42
+        run: tests/run_tests.sh
