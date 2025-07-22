@@ -98,9 +98,10 @@ void	Server::handleClientInput(int client_fd)
 
 void	Server::dispatchCommand(std::shared_ptr<Client> client, ParsedInput const &parsed)
 {
-	//const std::string &command = parsed.command;
-	
 	switch (parsed.commandType) {
+		case CommandType::CAP:
+			handleCAP(client, parsed);
+			break;
 		case CommandType::JOIN:
 			handleJOIN(client, parsed);
 			break;
@@ -164,6 +165,17 @@ void	Server::run() // Main server loop
 			}
 			i++;
 		}
+	}
+}
+
+void Server::handleCAP(std::shared_ptr<Client> client, const ParsedInput& parsed)
+{
+	const std::vector<std::string>& params = parsed.parameters;
+	
+	if (params.size() >= 1 && params[0] == "LS") {
+		std::string response = ":ircserv CAP * LS: \r\n";
+		send(client->getFd(), response.c_str(), response.length(), 0);
+		Logger::log(LogLevel::DEBUG, "Handled CAP LS for FD: " + std::to_string(client->getFd()));
 	}
 }
 

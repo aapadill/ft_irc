@@ -64,6 +64,7 @@ class Server
 		void	handleTOPIC(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handleMODE(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handleCAP(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handlePART(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handleNICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleUSER(std::shared_ptr<User> client, const std::vector<std::string>& params);
