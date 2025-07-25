@@ -11,14 +11,15 @@
 /* ************************************************************************** */
 
 #include "User.hpp"
+#include "Client.hpp"
 
-User::User(std::string nick, int sock) : _nickname(std::move(nick)), _socket(sock), _authenticated(false), _registered(false)
+User::User(std::string nick) : _nickname(std::move(nick))
 {
-    // should we initialize these? 
     _username = "";
     _realname = "";
-    _buffer.clear(); // empty buffer?
 }
+
+User::User(Client* client) : _client(client) {}
 
 std::string User::getNickname() const
 { 
@@ -40,31 +41,10 @@ std::string User::getPrefix() const
     return _nickname + "!" + _username + "@localhost";
 }
 
-int User::getSocket() const
+void User::sendMessage(const std::string& message)
 {
-    return _socket;
-}
-
-bool User::isAuthenticated() const
-{
-    return _authenticated;
-}
-
-bool User::isRegistered() const
-{
-    return _registered;
-}
-
-void	User::checkRegisteration()
-{
-	if (isAuthenticated() && !isRegistered() && !_nickname.empty() && !_username.empty())
-	{
-		setRegistered(true);
-		sendNumericReply(001, ":Welcome to the IRC Server " + _nickname);
-		sendNumericReply(002, ":Your host is ircserver, running version ft_irc");
-		sendNumericReply(003, ":This server was created " + getCurrentDate());
-		sendNumericReply(004, ":irc.server.com ft_irc <supported user modes> <supported channel modes>");
-	}
+	if (_client)
+		_client->sendMessage(message);
 }
 
 void User::setNickname(const std::string& nick)
@@ -80,51 +60,6 @@ void User::setUsername(const std::string& user)
 void User::setRealname(const std::string& real)
 {
     _realname = real;
-}
-
-void User::setAuthenticated(bool auth)
-{
-    _authenticated = auth;
-}
-
-void User::setRegistered(bool reg)
-{
-    _registered = reg;
-}
-
-void User::appendToBuffer(const std::string& data)
-{
-    _buffer += data;
-}
-
-//std::string User::extractFromBuffer() {}
-
-void User::sendMessage(const std::string& message) 
-{
-    // send message to socket_
-    //std::cout << "To [" << _nickname << "]: " << message << "\n";
-	std::string msgWithCRLF = message + "\r\n";
-	send(_socket, msgWithCRLF.c_str(), msgWithCRLF.size(), 0);
-}
-
-void User::sendNumericReply(int code, const std::string& message)
-{
-	std::string reply = ":" + std::string("irc.server.com") + " " + //or localhost?
-						std::to_string(code) + " " + _nickname + " " + message;
-	sendMessage(reply);
-}
-
-std::string	User::getCurrentDate() const
-{
-	std::time_t now = std::time(nullptr);
-	std::tm* localTime = std::localtime(&now);
-
-	std::ostringstream oss;
-	oss << std::asctime(localTime);
-
-	std::string dateStr = oss.str();
-	dateStr.erase(dateStr.find_last_not_of("\n") + 1);
-	return dateStr;
 }
 
 bool	User::isValidNickname(const std::string& nickname)

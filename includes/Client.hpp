@@ -19,6 +19,11 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include <iomanip>
+#include <ctime>
+#include <sys/socket.h>
+
+#define SERVER "irc.ircserv.com"
 
 class User;
 
@@ -30,7 +35,10 @@ class Client {
 		bool		_hasNick;
 		bool		_hasUser;
 		std::shared_ptr<User>	_user;
-
+		std::string _buffer; //helpful to have the incoming data until a complete message is formed
+		bool        _registered;
+		bool        _authenticated;
+        
 		Client(const Client& copy) = delete;
 		
 	public:
@@ -43,8 +51,11 @@ class Client {
 		void appendToBuffer(const std::string& data);
 		bool hasCompleteMessage() const;
 		std::string getNextMessage(); //split by r/n/
+		void setAuthenticated(bool auth);
+        void setRegistered(bool reg);
 
-		bool isRegistered() const;
+		bool isAuthenticated() const;
+        bool isRegistered() const;
 		void markHasNick();
 		void markHasUser();
 		void tryRegister(const std::string& nick, const std::string& user, const std::string& real);
@@ -53,6 +64,8 @@ class Client {
 		void sendMessage(const std::string& msg);
 		void sendNumericReply(int code, const std::string &message);
 		std::string getNick() const;
+
+		std::string	getCurrentDate() const;
 };
 		
 

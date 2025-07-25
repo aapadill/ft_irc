@@ -13,9 +13,14 @@
 #include "Client.hpp"
 #include "User.hpp"
 
-Client::Client() : _fd(-1), _recvBuffer(""), _hasNick(false), _hasUser(false), _user(nullptr) {}
+Client::Client() : _fd(-1), _recvBuffer(""), _hasNick(false), _hasUser(false), _user(nullptr), 
+_buffer(), _registered(false), _authenticated(false) {}
 
-Client::Client(int fd) : _fd(fd), _recvBuffer(""), _hasNick(false), _hasUser(false), _user(nullptr) {}
+Client::Client(int fd) : _fd(fd), _recvBuffer(""), _hasNick(false), _hasUser(false), _user(nullptr),
+_buffer(), _registered(false), _authenticated(false) 
+{
+    _user = std::make_shared<User>("");
+}
 
 Client &Client::operator=(const Client& other)
 {
@@ -28,15 +33,6 @@ Client &Client::operator=(const Client& other)
     }
     return *this;
 }
-
-/*Client::Client(int fd)
-{
-    _fd = fd;
-    _recvBuffer = "";
-    _hasNick = false;
-    _hasUser = false;
-    _user = nullptr;
-}*/
 
 Client::~Client()
 {
@@ -71,6 +67,11 @@ std::string Client::getNextMessage()
     return message;
 }
 
+bool Client::isAuthenticated() const
+{
+    return _authenticated;
+}
+
 bool Client::isRegistered() const
 {
     return _hasNick && _hasUser;
@@ -89,10 +90,9 @@ void Client::markHasUser()
 void Client::tryRegister(const std::string& nick, const std::string& user, const std::string& real)
 {
     if (_hasNick && _hasUser && !_user) {
-        _user = std::make_shared<User>(nick, _fd);
+        _user = std::make_shared<User>(nick);
         _user->setUsername(user);
         _user->setRealname(real);
-        _user->setRegistered(true);
     }
 
     sendNumericReply(001, nick + " :Welcome to the IRC network");
@@ -118,11 +118,38 @@ std::string Client::getNick() const
 
 void Client::sendNumericReply(int code, const std::string &message)
 {
+    std::string serverName = SERVER;
+    std::string nickname = _user ? _user->getNickname() : "*";
+
 	std::ostringstream oss;
-	oss << ":" << "irc.server" << " "  // Replace with actual server name
-	    << code << " "
-	    << getNick() << " "
-	    << message << "\r\n";
+	oss << ":" << serverName << " " <<std::setw(3) << std::setfill('0')
+        << code << nickname << " " << message << "\r\n";
 
 	sendMessage(oss.str()); 
+}
+
+
+void Client::setAuthenticated(bool auth)
+{
+    _authenticated = auth;
+}
+
+void Client::setRegistered(bool reg)
+{
+    _registered = reg;
+}
+
+//std::string User::extractFromBuffer() {}
+
+std::string	Client::getCurrentDate() const
+{
+	std::time_t now = std::time(nullptr);
+	std::tm* localTime = std::localtime(&now);
+
+	std::ostringstream oss;
+	oss << std::asctime(localTime);
+
+	std::string dateStr = oss.str();
+	dateStr.erase(dateStr.find_last_not_of("\n") + 1);
+	return dateStr;
 }

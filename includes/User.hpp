@@ -17,6 +17,9 @@
 #include <sys/socket.h>
 #include <ctime>
 #include <sstream>
+#include <memory>
+
+class Client;
 
 class User {
 
@@ -24,38 +27,30 @@ class User {
         std::string _nickname;
         std::string _username;
         std::string _realname;
-        int         _socket;
-        bool        _authenticated;
-        bool        _registered;
-        std::string _buffer; //helpful to have the incoming data until a complete message is formed
+
+        Client* _client;
+        
     public:
     
-        User(std::string nick, int sock);
+        User(std::string nick);
+        User(Client* client);
+
+        Client* getClient() const;
         std::string getNickname() const;
         std::string getUsername() const;
         std::string getRealname() const;
         std::string getPrefix() const;
 
-        int getSocket() const;
-        bool isAuthenticated() const;
-        bool isRegistered() const;
-
         void setNickname(const std::string& nick);
         void setUsername(const std::string& user);
         void setRealname(const std::string& real);
-        void setAuthenticated(bool auth);
-        void setRegistered(bool reg);
-		void	checkRegisteration();
 
         void appendToBuffer(const std::string& data);
         std::string extractFromBuffer();
         bool hasCompleteMessage() const;
 
         void sendMessage(const std::string& message);
-        void sendNumericReply(int code, const std::string& message);
-
-		std::string	getCurrentDate() const;
-
+       
 		bool	isValidNickname(const std::string& nickname);
 		bool	isValidUsername(const std::string& username);
 		bool	isValidRealname(const std::string& realname);

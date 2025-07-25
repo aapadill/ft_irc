@@ -66,12 +66,12 @@ class Server
 		void	handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handleCAP(std::shared_ptr<Client> client, const ParsedInput& parsed);
 		void	handlePART(std::shared_ptr<Client> client, const ParsedInput& parsed);
-		void	handleNICK(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleUSER(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handlePASS(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleNOTICE(std::shared_ptr<User> client, const std::vector<std::string>& params);
-		void	handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleNICK(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handleUSER(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handlePASS(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handlePRIVMSG(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handleNOTICE(std::shared_ptr<Client> client, const ParsedInput& parsed);
+		void	handleQUIT(std::shared_ptr<Client> client, const ParsedInput& parsed);
 
 	public:
 		Server(int port, std::string const &password);

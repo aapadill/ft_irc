@@ -120,6 +120,24 @@ void	Server::dispatchCommand(std::shared_ptr<Client> client, ParsedInput const &
 		case CommandType::MODE:
 			handleMODE(client, parsed);
 			break;
+		case CommandType::NICK:
+			handleNICK(client, parsed);
+			break;
+		case CommandType::USER:
+			handleUSER(client, parsed);
+			break;
+		case CommandType::PASS:
+			handlePASS(client, parsed);
+			break;
+		case CommandType::PRIVMSG:
+			handlePRIVMSG(client, parsed);
+			break;
+		case CommandType::NOTICE:
+			handleNOTICE(client, parsed);
+			break;
+		case CommandType::QUIT:
+			handleQUIT(client, parsed);
+			break;
 		default:
 			client->sendNumericReply(421, parsed.command + " :Unknown command");
 	}
@@ -480,8 +498,10 @@ void	Server::handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parse
 //void	Server::handlePART(std::shared_ptr<Client> client, const ParsedInput& parsed)
 //{}
 
-/*void	Server::handleNICK(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handleNICK(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
+	
 	if (!client->isAuthenticated())
 	{
 		client->sendNumericReply(451, "NICK :You have not registered (missing PASS)");
@@ -504,29 +524,39 @@ void	Server::handleJOIN(std::shared_ptr<Client> client, const ParsedInput& parse
 	if (end != std::string::npos)
 		newNick.erase(end + 1);
 	
-	if (!client->isValidNickname(newNick))
+	if (!client->getUser()->isValidNickname(newNick))
 	{
 		client->sendNumericReply(432, newNick + ":Invalid nickname");
 		return;
 	}
 
-	for (const auto& [fd, user] : _clients)
+	for (const auto& [fd, otherClient] : _clients)
 	{
-		if (user->getNickname() == newNick)
+		if (otherClient->getUser()->getNickname() == newNick)
 		{
 			client->sendNumericReply(433, newNick + " :Nickname is already in use");
 			return;
 		}
 	}
 
-	client->setNickname(newNick);
-	std::cout << "DEBUG!! Set nickname to " << newNick << " for FD: " << client->getSocket() << std::endl;
+	client->getUser()->setNickname(newNick);
+	Logger::log(LogLevel::DEBUG, "Set nickname to " + newNick + " for FD: " + std::to_string(client->getFd()));
 
-	client->checkRegisteration();
+	/*if (client->isAuthenticated() && client->isRegistered()) 
+	{
+		client->sendNumericReply(001, ":Welcome to the IRC server" + client->getNick());
+		client->sendNumericReply(002, ":Your host is ircserver, running version ft_irc");
+		client->sendNumericReply(003, ":This server was created" + client->getCurrentDate());
+		client->sendNumericReply(004, ":irc.server.com ft_irc <suppoted user modes> <supported channel modes>");
+	}*/
+
+	client->tryRegister(client->getUser()->getNickname(), client->getUser()->getUsername(), client->getUser()->getRealname());
 }
 
-void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handleUSER(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
+
 	if (!client->isAuthenticated())
 	{
 		client->sendNumericReply(451, "USER :You have not registered (missing PASS)");
@@ -551,42 +581,52 @@ void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::str
 	if (!realname.empty() && (realname.back() == '\r' || realname.back() == '\n'))
 		realname.erase(realname.find_last_not_of("\r\n") + 1);
 
-	if (!client->isValidUsername(username))
+	if (!client->getUser()->isValidUsername(username))
 	{
 		client->sendNumericReply(468, ":Invalid username");
 		return;
 	}
 
-	if (!client->isValidRealname(realname))
+	if (!client->getUser()->isValidRealname(realname))
 	{
 		client->sendNumericReply(468, ":Invalid realname");
 		return;
 	}
 
-	client->setUsername(username);
-	client->setRealname(realname);
+	client->getUser()->setUsername(username);
+	client->getUser()->setRealname(realname);
 
 	client->setAuthenticated(true);
-	std::cout << "DEBUG!! Set username to " << params[0] << ", realname to " << params[3] << std::endl;
 
-	client->checkRegisteration();
+		Logger::log(LogLevel::DEBUG, "Set username to " + username + ", realname to " + realname 
+			+ " for FD: "+ std::to_string(client->getFd()));
+
+	if (client->isAuthenticated() && client->isRegistered()) 
+	{
+		client->sendNumericReply(001, ":Welcome to the IRC server" + client->getNick());
+		client->sendNumericReply(002, ":Your host is ircserver, running version ft_irc");
+		client->sendNumericReply(003, ":This server was created" + client->getCurrentDate());
+		client->sendNumericReply(004, ":irc.server.com ft_irc <suppoted user modes> <supported channel modes>");
+	}
 }
 
-void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handlePASS(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
+
 	if (params.empty())
 	{
 		client->sendNumericReply(461, " PASS: Not enough parameters");
 		return ;
 	}
-	std::cout << "DEBUG!! Excpected password: " << _password << std::endl;
-	std::cout << "DEBUG!! Received password: " << params[0] << std::endl;
+	Logger::log(LogLevel::DEBUG, "Expected password " + _password);
+	Logger::log(LogLevel::DEBUG, "Received password " + params[0]);
 
 	std::string received = params[0];
 	received.erase(received.find_last_not_of("\r\n") + 1);
 
-	std::cout << "DEBUG!! Expected password: [" << _password << "]" << std::endl;
-	std::cout << "DEBUG!! Received password: [" << received << "]" << std::endl;
+	Logger::log(LogLevel::DEBUG, "Expected password: [" + _password + "]");
+	Logger::log(LogLevel::DEBUG, "Received password: [" + received + "]");
 
 	if (client->isAuthenticated())
 	{
@@ -598,9 +638,9 @@ void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::str
 	{
 		client->sendNumericReply(461, "PASS :Not enough parameters");
 		return;
-	}*/
+	}
 
-	/*if (received != _password)
+	if (received != _password)
 	{
 		client->sendNumericReply(464, ":Password incorrect");
 		return;
@@ -609,8 +649,10 @@ void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::str
 	client->setAuthenticated(true);
 }
 
-void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handlePRIVMSG(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
+
 	if (!client->isRegistered())
 	{
 		client->sendNumericReply(451, "PRIVMSG :You have not registered");
@@ -634,27 +676,25 @@ void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::
 			return;
 		}
 
-		Channel& channel = _channels.at(receiver);
-		if (!channel.hasUser(client->getNickname()))
+		std::shared_ptr<Channel> channel = _channels.at(receiver);
+		if (!channel->hasUser(client->getUser()->getNickname()))
 		{
 			client->sendNumericReply(404, receiver + " :Cannot send to channel");
 			return;
 		}
 
-		std::string fullMsg = ":" + client->getNickname() + " PRIVMSG " + receiver + " :" + message;
-		channel.broadcast(fullMsg, client->getNickname());
+		std::string fullMsg = ":" + client->getUser()->getNickname() + " PRIVMSG " + receiver + " :" + message;
+		channel->broadcast(fullMsg, client->getUser()->getNickname());
 	}
 	else //privmsg to another user
 	{
-		std::shared_ptr<User> target = nullptr;
-		std::cout << "DEBUG !! PRIVMSG from [" << client->getNickname() << "] to [" << receiver << "]" << std::endl;
+		std::shared_ptr<Client> target = nullptr;
+		Logger::log(LogLevel::DEBUG, "PRIVMSG from: [" + client->getUser()->getNickname() + "] to [" + receiver + "]");
 
-		for (const auto& [fd, user] : _clients)
-		{
-			std::cout << "DEBUG!! Checking against registered user: [" << user->getNickname() << "]" << std::endl;
-			if (user->getNickname() == receiver)
-			{
-				target = user;
+		for (const auto& [fd, otherClient] : _clients) {
+			Logger::log(LogLevel::DEBUG, "Checking against registered user: [" + otherClient->getUser()->getNickname() + "]");
+			if (otherClient->getUser()->getNickname() == receiver) {
+				target = otherClient;
 				break;
 			}
 		}
@@ -665,14 +705,16 @@ void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::
 			return;
 		}
 
-		std::string fullMsg = ":" + client->getNickname() + " PRIVMSG " + receiver + " :" + message;
-		std::cout << "DEBUG!! Sending message to " << target->getNickname() << ": " << fullMsg << std::endl;
+		std::string fullMsg = ":" + client->getUser()->getNickname() + " PRIVMSG " + receiver + " :" + message;
+		Logger::log(LogLevel::DEBUG, "Sending message to " + target->getUser()->getNickname() + ":" + fullMsg );
 		target->sendMessage(fullMsg);
 	}
 }
 
-void	Server::handleNOTICE(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handleNOTICE(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
+
 	if (!client->isRegistered())
 		return;
 	
@@ -687,53 +729,54 @@ void	Server::handleNOTICE(std::shared_ptr<User> client, const std::vector<std::s
 		if (_channels.count(receiver) == 0)
 			return;
 
-		Channel& channel = _channels.at(receiver);
-		if (!channel.hasUser(client->getNickname()))
+		std::shared_ptr<Channel> channel = _channels.at(receiver);
+		if (!channel->hasUser(client->getUser()->getNickname()))
 			return;
 
-		std::string fullMsg = ":" + client->getNickname() + " NOTICE " + receiver + " :" + message;
-		channel.broadcast(fullMsg, client->getNickname());
+		std::string fullMsg = ":" + client->getUser()->getNickname() + " NOTICE " + receiver + " :" + message;
+		channel->broadcast(fullMsg, client->getUser()->getNickname());
 	}
 	else
 	{
-		for (const auto& [fd, user] : _clients)
+		for (const auto& [fd, otherClient] : _clients)
 		{
-			if (user->getNickname() == receiver)
+			if (otherClient->getUser()->getNickname() == receiver)
 			{
-				std::string fullMsg = ":" + client->getNickname() + " NOTICE " + receiver + " :" + message;
-				user->sendMessage(fullMsg);
+				std::string fullMsg = ":" + client->getUser()->getNickname() + " NOTICE " + receiver + " :" + message;
+				otherClient->sendMessage(fullMsg);
 				break;
 			}
 		}
 	}
 }
 
-void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params)
+void	Server::handleQUIT(std::shared_ptr<Client> client, const ParsedInput& parsed)
 {
+	const std::vector<std::string>& params = parsed.parameters;
 	//not fully tested
 	std::string quitMsg = "Client Quit";
-	if (!params.empty())
-	{
+	if (!params.empty()) {
 		quitMsg = params[0];
 		if (quitMsg[0] == ':')
 			quitMsg = quitMsg.substr(1);
 	}
 
-	std::string fullMsg = ":" + client->getNickname() + " QUIT :" + quitMsg;
+	std::string nickname = client->getUser()->getNickname();
+	std::string fullMsg = ":" + nickname + "Quit :" + quitMsg;
 
-	//informing all users in channels about quitting
-	for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end(); ++it)
-	{
-		Channel& channel = it->second;
-		if (channel.hasUser(client->getNickname()))
-			channel.broadcast(fullMsg, client->getNickname());
-		channel.removeUser(client->getNickname());
+	std::vector<std::string> affectedChannels;
+	for (const auto& [name, channel] : _channels) {
+		if (channel->hasUser(nickname)) {
+			channel->broadcast(fullMsg, nickname);
+			affectedChannels.push_back(name);
+		}
 	}
 
-	std::cout << "DEBUG!! QUIT: " << fullMsg << std::endl;
+	for (const std::string& name : affectedChannels)
+		_channels[name]->removeUser(nickname);
+
+	Logger::log(LogLevel::DEBUG, "QUIT:" + fullMsg);
 	client->sendMessage(fullMsg);
-	close(client->getSocket());
-	_clients.erase(client->getSocket());
-} */
-
-
+	close(client->getFd());
+	_clients.erase(client->getFd());
+}
