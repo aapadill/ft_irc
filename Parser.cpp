@@ -16,6 +16,7 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 	
 	/*if (line.size() >= 2 && line.substr(line.size() - 2) == "\r\n")
 		line = line.substr(0, line.size() - 2);*/
+	// segfault fixed when empty line
 	size_t trim_pos = line.find_last_not_of("\r\n");
 	if (trim_pos != std::string::npos)
 		line.erase(trim_pos + 1);
@@ -88,6 +89,7 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 
 	for (size_t i = 0; i < result.parameters.size(); ++i)
 	{
+		// segfault fixed when empty line
 		if (!result.parameters[i].empty()) {
 			size_t param_pos = result.parameters[i].find_last_not_of("\r\n");
 			if (param_pos != std::string::npos)

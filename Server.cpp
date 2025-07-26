@@ -78,7 +78,7 @@ void	Server::handleClientInput(int client_fd)
 	_clients[client_fd]->appendToBuffer(input);
 	
 	// process all complete messages in the buffer
-	while (_clients[client_fd]->hasCompleteMessage())
+	while (_clients.count(client_fd) && _clients[client_fd]->hasCompleteMessage())
 	{
 		std::string completeMessage = _clients[client_fd]->extractFromBuffer();
 		std::cout << "DEBUG!! Processing complete message: " << completeMessage << std::endl;
@@ -87,10 +87,12 @@ void	Server::handleClientInput(int client_fd)
 		if (!parsed)
 		{
 			std::cout << "DEBUG!! Parsing failed for message: " << completeMessage << std::endl;
-			_clients[client_fd]->sendMessage("Error: Invalid command.");
+			if (_clients.count(client_fd))
+				_clients[client_fd]->sendMessage("Error: Invalid command.");
 			continue;
 		}
-		dispatchCommand(_clients[client_fd], *parsed);
+		if (_clients.count(client_fd))
+			dispatchCommand(_clients[client_fd], *parsed);
 	}
 }
 
@@ -212,6 +214,13 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 	
 	// remove user from channel
 	channel->removeUser(targetNick);
+	
+	// remove channel if empty
+	if (channel->getUsers().empty())
+	{
+		_channels.erase(channelName);
+		std::cout << "DEBUG!! Removed empty channel: " << channelName << std::endl;
+	}
 }
 
 void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params)
@@ -689,6 +698,13 @@ void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::str
 	
 	// remove user from channel
 	channel->removeUser(client->getNickname());
+	
+	// remove channel if empty
+	if (channel->getUsers().empty())
+	{
+		_channels.erase(channelName);
+		std::cout << "DEBUG!! Removed empty channel: " << channelName << std::endl;
+	}
 }
 
 void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params)
@@ -703,20 +719,37 @@ void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::str
 	}
 
 	std::string fullMsg = ":" + client->getNickname() + " QUIT :" + quitMsg;
+	std::string clientNick = client->getNickname(); // Store nickname before removal
+	
+	// send quit message to client first
+	std::cout << "DEBUG!! QUIT: " << fullMsg << std::endl;
+	client->sendMessage(fullMsg);
 
-	//informing all users in channels about quitting
+	// inform all users in channels and clean up empty channels
+	std::vector<std::string> emptyChannels;
 	for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end(); ++it)
 	{
 		Channel& channel = it->second;
-		if (channel.hasUser(client->getNickname()))
-			channel.broadcast(fullMsg, client->getNickname());
-		channel.removeUser(client->getNickname());
+		if (channel.hasUser(clientNick))
+		{
+			channel.broadcast(fullMsg, clientNick);
+			channel.removeUser(clientNick);
+			
+			// Mark channel for removal if empty
+			if (channel.getUsers().empty())
+				emptyChannels.push_back(it->first);
+		}
 	}
-
-	std::cout << "DEBUG!! QUIT: " << fullMsg << std::endl;
-	client->sendMessage(fullMsg);
-	close(client->getSocket());
-	_clients.erase(client->getSocket());
+	
+	// remove empty channels
+	for (const std::string& channelName : emptyChannels)
+	{
+		_channels.erase(channelName);
+		std::cout << "DEBUG!! Removed empty channel: " << channelName << std::endl;
+	}
+	
+	// remove the client at end of connection
+	removeClient(client->getSocket());
 }
 
 // helpers
