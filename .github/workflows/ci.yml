@@ -14,14 +14,10 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake valgrind netcat-openbsd
+          sudo apt-get install -y build-essential valgrind netcat-openbsd
 
-      - name: Configure & build
-        run: |
-          mkdir -p build
-          cd build
-          cmake ..
-          make -j
+      - name: Build project
+        run: make
 
       - name: Make tests executable
         run: chmod +x tests/run_tests.sh
@@ -37,5 +33,5 @@ jobs:
         env:
           IRC_PASS: secret42
         run: |
-          cd build
           valgrind --leak-check=full --error-exitcode=1 ./ircserv 127.0.0.1 0 "$IRC_PASS"
+
