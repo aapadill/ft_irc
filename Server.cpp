@@ -1,6 +1,12 @@
 #include "Server.hpp"
 
-Server::Server(int port, std::string const &password) : _port(port), _password(password), _parser(new Parser()) {}
+Server::Server(int port, std::string const &password) : _port(port), _password(password), _parser(nullptr)
+{
+	if (port < 0 || port > 65535)
+		throw std::invalid_argument("Invalid port number.");
+
+	_parser = new Parser(); //once port is valid, to avoid leaks
+}
 
 Server::~Server() 
 {
