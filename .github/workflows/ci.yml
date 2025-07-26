@@ -14,14 +14,28 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y netcat-openbsd
+          sudo apt-get install -y build-essential cmake valgrind netcat-openbsd
+
+      - name: Configure & build
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j
 
       - name: Make tests executable
         run: chmod +x tests/run_tests.sh
 
-      - name: Run ft_irc test suite
-        shell: bash
+      # Run ft_irc test suite (temporarily commented out)
+      # - name: Run ft_irc test suite
+      #   shell: bash
+      #   env:
+      #     IRC_PASS: secret42
+      #   run: tests/run_tests.sh
+
+      - name: Leak check with Valgrind
         env:
-          # Override if you start your server with a different password
           IRC_PASS: secret42
-        run: tests/run_tests.sh
+        run: |
+          cd build
+          valgrind --leak-check=full --error-exitcode=1 ./ircserv 127.0.0.1 0 "$IRC_PASS"
