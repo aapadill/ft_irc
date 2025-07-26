@@ -64,7 +64,8 @@ class Channel {
 		bool isInvited(const std::string& nickname) const;
 
 		void setMode(char mode, bool enable, const std::string& arg = "");
-		void broadcast(const std::string& message, const std::string& sender = "");
+		void broadcast(const std::string& message, const std::string& excludeNick = "");
 		std::string getName(void) const;
+		std::unordered_map<std::string, std::shared_ptr<User>> getUsers(void) const;
 
 };

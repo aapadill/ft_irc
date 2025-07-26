@@ -32,7 +32,7 @@ bool Channel::addUser(std::shared_ptr<User> user, const std::string& providedKey
 
     _users[nick] = user;
     _invited.erase(nick);
-    broadcast(nick + " has joined the channel");
+    // removing broadcast here, server will handle JOIN messages
 
     return true;
 }
@@ -41,7 +41,7 @@ void Channel::removeUser(const std::string& nickname)
 {
     _users.erase(nickname);
     _operators.erase(nickname);
-    broadcast(nickname + " has left the channel");
+    // removing broadcast here, server will handle PART/QUIT messages
 }
 
 bool	Channel::hasUser(const std::string& nickname) const
@@ -70,7 +70,7 @@ void Channel::setTopic(const std::string& nickname, const std::string& newTopic)
 {
     if (_topicRestricted && !isOperator(nickname)) return;
     _topic = newTopic;
-    broadcast("Topic set to: " + _topic);
+    // removing broadcast here, server will handle TOPIC messages
 }
 
 std::string Channel::getTopic(void) const
@@ -129,22 +129,13 @@ void Channel::setMode(char mode, bool enable, const std::string& arg)
             break;
     }
 }
-
-void Channel::broadcast(const std::string& message, const std::string& sender)
+ 
+void Channel::broadcast(const std::string& message, const std::string& excludeNick)
 {
     for (auto& [nick, user] : _users) {
-        if (nick != sender)
+        if (excludeNick.empty() || nick != excludeNick)
         {
-            // assuming that if the message contains a colon, it is either a command or a message
-            if (message.find(":") != std::string::npos && message.find("") != std::string::npos)
-            {
-                user->sendMessage(":" + message);
-            }
-            // otherwise, it's a regular message
-            else
-            {
-                user->sendMessage("[" + _name + "] " + message);
-            }
+            user->sendMessage(message);
         }
     }
 }
@@ -152,4 +143,10 @@ void Channel::broadcast(const std::string& message, const std::string& sender)
 std::string Channel::getName(void) const
 {
     return _name;
+}
+
+// used by server to get users in channel for LIST command
+std::unordered_map<std::string, std::shared_ptr<User>> Channel::getUsers(void) const
+{
+    return _users;
 }

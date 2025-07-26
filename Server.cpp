@@ -307,10 +307,9 @@ void Server::handleTOPIC(std::shared_ptr<User> client, const std::vector<std::st
 		const std::string& newTopic = params[1];
 		channel.setTopic(client->getNickname(), newTopic);
 		
-		// broadcast topic change
+		// broadcast topic change to all users including the setter
 		std::string topicMessage = ":" + client->getNickname() + " TOPIC " + channelName + " :" + newTopic;
-		channel.broadcast(topicMessage);
-		client->sendMessage(topicMessage); // also send to the user who set it
+		channel.broadcast(topicMessage); // empty excludeNick means send to all
 	}
 }
 
@@ -376,8 +375,8 @@ void Server::handleMODE(std::shared_ptr<User> client, const std::vector<std::str
 			if (!arg.empty())
 				modeMessage += " " + arg;
 			
-			channel.broadcast(modeMessage);
-			client->sendMessage(modeMessage);
+			// broadcast mode change to all users including the setter
+			channel.broadcast(modeMessage); // empty excludeNick means send to all
 		}
 	}
 }
@@ -635,13 +634,12 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 	}
 
 	// create channel if it doesn't exist
-	if (_channels.count(channelName) == 0)
+	bool isNewChannel = (_channels.count(channelName) == 0);
+	if (isNewChannel)
 	{
 		_channels.emplace(std::piecewise_construct, 
 						  std::forward_as_tuple(channelName), 
 						  std::forward_as_tuple(channelName));
-		// First user becomes operator
-		_channels.at(channelName).addOperator(client->getNickname());
 	}
 
 	Channel& channel = _channels.at(channelName);
@@ -653,8 +651,15 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 		
 	if (channel.addUser(client, key))
 	{
-		// send JOIN message to all users in channel
+		// If new channel, make the first user an operator
+		if (isNewChannel)
+		{
+			channel.addOperator(client->getNickname());
+		}
+		
+		// send JOIN message to all users in channel including the joiner
 		std::string joinMsg = ":" + client->getNickname() + " JOIN " + channelName;
+		// send JOIN message to all users in channel including the joiner
 		channel.broadcast(joinMsg);
 		
 		// send topic if exists
@@ -667,6 +672,20 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 		{
 			client->sendNumericReply(331, channelName + " :No topic is set");
 		}
+		
+		// send channel names list (353 and 366)
+		std::string namesList = "";
+		auto users = channel.getUsers();
+		for (const auto& [nick, user] : users)
+		{
+			if (!namesList.empty())
+				namesList += " ";
+			if (channel.isOperator(nick))
+				namesList += "@";
+			namesList += nick;
+		}
+		client->sendNumericReply(353, "= " + channelName + " :" + namesList);
+		client->sendNumericReply(366, channelName + " :End of /NAMES list");
 	}
 	else
 	{
@@ -709,7 +728,7 @@ void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::str
 	if (params.size() > 1)
 		partMsg = params[1];
 
-	// send PART message to all users in channel
+	// send PART message to all users in channel including the one leaving
 	std::string fullMsg = ":" + client->getNickname() + " PART " + channelName + " :" + partMsg;
 	channel.broadcast(fullMsg);
 	
