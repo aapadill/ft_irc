@@ -136,7 +136,12 @@ std::string	User::getCurrentDate() const
 	oss << std::asctime(localTime);
 
 	std::string dateStr = oss.str();
-	dateStr.erase(dateStr.find_last_not_of("\n") + 1);
+	// segfault fixed when empty line 
+	size_t pos = dateStr.find_last_not_of("\n");
+	if (pos != std::string::npos)
+		dateStr.erase(pos + 1);
+	else
+		dateStr.clear();
 	return dateStr;
 }
 

@@ -457,7 +457,12 @@ void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::str
 	std::cout << "DEBUG!! Received password: " << params[0] << std::endl;
 
 	std::string received = params[0];
-	received.erase(received.find_last_not_of("\r\n") + 1);
+	// segfault fixed when empty line 
+	size_t trim_pos = received.find_last_not_of("\r\n");
+	if (trim_pos != std::string::npos)
+		received.erase(trim_pos + 1);
+	else
+		received.clear();
 
 	std::cout << "DEBUG!! Expected password: [" << _password << "]" << std::endl;
 	std::cout << "DEBUG!! Received password: [" << received << "]" << std::endl;

@@ -16,7 +16,11 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 	
 	/*if (line.size() >= 2 && line.substr(line.size() - 2) == "\r\n")
 		line = line.substr(0, line.size() - 2);*/
-	line.erase(line.find_last_not_of("\r\n") + 1);
+	size_t trim_pos = line.find_last_not_of("\r\n");
+	if (trim_pos != std::string::npos)
+		line.erase(trim_pos + 1);
+	else
+		line.clear();
 
 
 	ParsedInput result;
@@ -84,8 +88,13 @@ std::optional<ParsedInput> Parser::parse(std::string const &input)
 
 	for (size_t i = 0; i < result.parameters.size(); ++i)
 	{
-		if (!result.parameters[i].empty())
-			result.parameters[i].erase(result.parameters[i].find_last_not_of("\r\n") + 1);
+		if (!result.parameters[i].empty()) {
+			size_t param_pos = result.parameters[i].find_last_not_of("\r\n");
+			if (param_pos != std::string::npos)
+				result.parameters[i].erase(param_pos + 1);
+			else
+				result.parameters[i].clear();
+		}
 	}
 
 	return result;
