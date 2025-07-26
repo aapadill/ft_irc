@@ -92,7 +92,25 @@ void User::appendToBuffer(const std::string& data)
     _buffer += data;
 }
 
-//std::string User::extractFromBuffer() {}
+std::string User::extractFromBuffer() 
+{
+	size_t pos = _buffer.find("\r\n");
+	if (pos == std::string::npos)
+		pos = _buffer.find("\n");
+	
+	if (pos != std::string::npos)
+	{
+		std::string message = _buffer.substr(0, pos);
+		_buffer.erase(0, pos + ((_buffer[pos] == '\r') ? 2 : 1));
+		return message;
+	}
+	return "";
+}
+
+bool User::hasCompleteMessage() const
+{
+	return (_buffer.find("\r\n") != std::string::npos || _buffer.find("\n") != std::string::npos);
+}
 
 void User::sendMessage(const std::string& message) 
 {
@@ -155,9 +173,10 @@ bool	User::isValidRealname(const std::string& realname)
 
 	for (char c : realname)
 	{
-		if (iscntrl(c))
+		if (iscntrl(c) && c != '\r' && c != '\n')
 			return false;
-		if (!isalpha(c) && c != ' ')
+		//  letters, spaces, numbers, and punctuation
+		if (!isalnum(c) && c != ' ' && c != '.' && c != '-' && c != '_')
 			return false;
 	}
 	return true;

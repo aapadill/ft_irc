@@ -53,6 +53,8 @@ class Server
 		void	handlePASS(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleNOTICE(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleJOIN(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handlePART(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params);
 
 	public:

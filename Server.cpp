@@ -74,34 +74,28 @@ void	Server::handleClientInput(int client_fd)
 	std::cout << "DEBUG!! bytesRead = " << bytesRead << std::endl;
 	std::cout << "DEBUG!! input = " << input << std::endl;
 
-	auto parsed = _parser->parse(input);
-	if (!parsed)
+	// add received data to user's buffer
+	_clients[client_fd]->appendToBuffer(input);
+	
+	// process all complete messages in the buffer
+	while (_clients[client_fd]->hasCompleteMessage())
 	{
-		std::cout << "DEBUG!! Parsing failed for input: " << input << std::endl;
-		_clients[client_fd]->sendMessage("Error: Invalid command.");
-		return;
+		std::string completeMessage = _clients[client_fd]->extractFromBuffer();
+		std::cout << "DEBUG!! Processing complete message: " << completeMessage << std::endl;
+		
+		auto parsed = _parser->parse(completeMessage);
+		if (!parsed)
+		{
+			std::cout << "DEBUG!! Parsing failed for message: " << completeMessage << std::endl;
+			_clients[client_fd]->sendMessage("Error: Invalid command.");
+			continue;
+		}
+		dispatchCommand(_clients[client_fd], *parsed);
 	}
-	dispatchCommand(_clients[client_fd], *parsed);
 }
 
 void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &parsed)
 {
-	/*
-	if (parsed.command == "JOIN" && !parsed.parameters.empty())
-	{
-		const std::string &channelName = parsed.parameters[0];
-
-		if (_channels.count(channelName) == 0)
-			_channels.emplace(std::piecewise_construct, std::forward_as_tuple(channelName), std::forward_as_tuple(channelName));
-
-		std::shared_ptr<User> userPtr = client;
-		auto it = _channels.find(channelName);
-		if (it != _channels.end() && it->second.addUser(userPtr))
-			client->sendMessage("Joined channel " + channelName);
-		else
-			client->sendMessage("Error: Failed to join channel " + channelName);
-	}
-	*/
 	const std::string &command = parsed.command;
 	const std::vector<std::string> &params = parsed.parameters;
 	if (command == "PASS")
@@ -121,6 +115,10 @@ void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &pa
 		handleNICK(client, params);
 	else if (command == "USER")
 		handleUSER(client, params);
+	else if (command == "JOIN")
+		handleJOIN(client, params);
+	else if (command == "PART")
+		handlePART(client, params);
 	else if (command == "PRIVMSG")
 		handlePRIVMSG(client, params);
 	else if (command == "NOTICE")
@@ -612,6 +610,112 @@ void	Server::handleNOTICE(std::shared_ptr<User> client, const std::vector<std::s
 	}
 }
 
+
+void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (!client->isRegistered())
+	{
+		client->sendNumericReply(451, "JOIN :You have not registered");
+		return;
+	}
+
+	if (params.empty())
+	{
+		client->sendNumericReply(461, "JOIN :Not enough parameters");
+		return;
+	}
+
+	const std::string& channelName = params[0];
+	
+	// validate channel name
+	if (channelName.empty() || channelName[0] != '#')
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+
+	// create channel if it doesn't exist
+	if (_channels.count(channelName) == 0)
+	{
+		_channels.emplace(std::piecewise_construct, 
+						  std::forward_as_tuple(channelName), 
+						  std::forward_as_tuple(channelName));
+		// First user becomes operator
+		_channels.at(channelName).addOperator(client->getNickname());
+	}
+
+	Channel& channel = _channels.at(channelName);
+	
+	// try to add user to channel
+	std::string key = "";
+	if (params.size() > 1)
+		key = params[1];
+		
+	if (channel.addUser(client, key))
+	{
+		// send JOIN message to all users in channel
+		std::string joinMsg = ":" + client->getNickname() + " JOIN " + channelName;
+		channel.broadcast(joinMsg);
+		
+		// send topic if exists
+		std::string topic = channel.getTopic();
+		if (!topic.empty())
+		{
+			client->sendNumericReply(332, channelName + " :" + topic);
+		}
+		else
+		{
+			client->sendNumericReply(331, channelName + " :No topic is set");
+		}
+	}
+	else
+	{
+		client->sendNumericReply(473, channelName + " :Cannot join channel");
+	}
+}
+
+void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::string>& params)
+{
+	if (!client->isRegistered())
+	{
+		client->sendNumericReply(451, "PART :You have not registered");
+		return;
+	}
+
+	if (params.empty())
+	{
+		client->sendNumericReply(461, "PART :Not enough parameters");
+		return;
+	}
+
+	const std::string& channelName = params[0];
+	
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return;
+	}
+
+	Channel& channel = _channels.at(channelName);
+	
+	if (!channel.hasUser(client->getNickname()))
+	{
+		client->sendNumericReply(442, channelName + " :You're not on that channel");
+		return;
+	}
+
+	// part message
+	std::string partMsg = "Leaving";
+	if (params.size() > 1)
+		partMsg = params[1];
+
+	// send PART message to all users in channel
+	std::string fullMsg = ":" + client->getNickname() + " PART " + channelName + " :" + partMsg;
+	channel.broadcast(fullMsg);
+	
+	// remove user from channel
+	channel.removeUser(client->getNickname());
+}
 
 void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
