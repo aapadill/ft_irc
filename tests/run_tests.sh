@@ -3,6 +3,7 @@
 # run_tests.sh – POSIX‐safe CI suite for 42 ft_irc
 # (auto-cleanup, port‐wait, env‐driven password)
 ###############################################################################
+
 PORT=6667
 # Pick up password from $IRC_PASS, or fall back to secret42
 PASS="${IRC_PASS:-secret42}"
