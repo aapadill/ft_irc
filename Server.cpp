@@ -199,28 +199,19 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 		reason = client->getNickname();
 	}
 
-
-	if (_channels.count(channelName) == 0)
-	{
-		client->sendNumericReply(403, channelName + " :No such channel");
+	Channel* channel = getChannelIfExists(channelName, client);
+	if (!channel)
 		return;
-	}
 	
-	Channel& channel = _channels.at(channelName);
-	
-	// check if user is operator
-	if (!channel.isOperator(client->getNickname()))
-	{
-		client->sendNumericReply(482, channelName + " :You're not channel operator");
+	if (!requireChannelOperator(*channel, client, channelName))
 		return;
-	}
 	
 	// notify channel about kick
 	std::string kickMessage = ":" + client->getNickname() + " KICK " + channelName + " " + targetNick + " :" + reason;
-	channel.broadcast(kickMessage);
+	channel->broadcast(kickMessage);
 	
 	// remove user from channel
-	channel.removeUser(targetNick);
+	channel->removeUser(targetNick);
 }
 
 void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::string>& params)
@@ -234,32 +225,14 @@ void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::s
 	const std::string& targetNick = params[0];
 	const std::string& channelName = params[1];
 	
-	if (_channels.count(channelName) == 0)
-	{
-		client->sendNumericReply(403, channelName + " :No such channel");
+	Channel* channel = getChannelIfExists(channelName, client);
+	if (!channel)
 		return;
-	}
 	
-	Channel& channel = _channels.at(channelName);
-	
-	// check if user is operator
-	if (!channel.isOperator(client->getNickname()))
-	{
-		client->sendNumericReply(482, channelName + " :You're not channel operator");
+	if (!requireChannelOperator(*channel, client, channelName))
 		return;
-	}
 	
-	// find target user
-	std::shared_ptr<User> targetUser = nullptr;
-	for (const auto& [fd, user] : _clients)
-	{
-		if (user->getNickname() == targetNick)
-		{
-			targetUser = user;
-			break;
-		}
-	}
-	
+	std::shared_ptr<User> targetUser = findUserByNick(targetNick);
 	if (!targetUser)
 	{
 		client->sendNumericReply(401, targetNick + " :No such nick/channel");
@@ -267,7 +240,7 @@ void Server::handleINVITE(std::shared_ptr<User> client, const std::vector<std::s
 	}
 	
 	// send invite
-	channel.inviteUser(client->getNickname(), targetNick);
+	channel->inviteUser(client->getNickname(), targetNick);
 	
 	// notify both users
 	client->sendNumericReply(341, targetNick + " " + channelName);
@@ -512,11 +485,8 @@ void	Server::handlePASS(std::shared_ptr<User> client, const std::vector<std::str
 
 void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (!client->isRegistered())
-	{
-		client->sendNumericReply(451, "PRIVMSG :You have not registered");
+	if (!requireRegistration(client, "PRIVMSG"))
 		return;
-	}
 
 	if (params.size() < 2)
 	{
@@ -547,19 +517,9 @@ void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::
 	}
 	else //privmsg to another user
 	{
-		std::shared_ptr<User> target = nullptr;
 		std::cout << "DEBUG !! PRIVMSG from [" << client->getNickname() << "] to [" << receiver << "]" << std::endl;
 
-		for (const auto& [fd, user] : _clients)
-		{
-			std::cout << "DEBUG!! Checking against registered user: [" << user->getNickname() << "]" << std::endl;
-			if (user->getNickname() == receiver)
-			{
-				target = user;
-				break;
-			}
-		}
-
+		std::shared_ptr<User> target = findUserByNick(receiver);
 		if (!target)
 		{
 			client->sendNumericReply(401, receiver + " :No such nick");
@@ -612,11 +572,8 @@ void	Server::handleNOTICE(std::shared_ptr<User> client, const std::vector<std::s
 
 void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (!client->isRegistered())
-	{
-		client->sendNumericReply(451, "JOIN :You have not registered");
+	if (!requireRegistration(client, "JOIN"))
 		return;
-	}
 
 	if (params.empty())
 	{
@@ -695,11 +652,8 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 
 void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::string>& params)
 {
-	if (!client->isRegistered())
-	{
-		client->sendNumericReply(451, "PART :You have not registered");
+	if (!requireRegistration(client, "PART"))
 		return;
-	}
 
 	if (params.empty())
 	{
@@ -709,15 +663,11 @@ void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::str
 
 	const std::string& channelName = params[0];
 	
-	if (_channels.count(channelName) == 0)
-	{
-		client->sendNumericReply(403, channelName + " :No such channel");
+	Channel* channel = getChannelIfExists(channelName, client);
+	if (!channel)
 		return;
-	}
-
-	Channel& channel = _channels.at(channelName);
 	
-	if (!channel.hasUser(client->getNickname()))
+	if (!channel->hasUser(client->getNickname()))
 	{
 		client->sendNumericReply(442, channelName + " :You're not on that channel");
 		return;
@@ -730,10 +680,10 @@ void	Server::handlePART(std::shared_ptr<User> client, const std::vector<std::str
 
 	// send PART message to all users in channel including the one leaving
 	std::string fullMsg = ":" + client->getNickname() + " PART " + channelName + " :" + partMsg;
-	channel.broadcast(fullMsg);
+	channel->broadcast(fullMsg);
 	
 	// remove user from channel
-	channel.removeUser(client->getNickname());
+	channel->removeUser(client->getNickname());
 }
 
 void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params)
@@ -762,5 +712,46 @@ void	Server::handleQUIT(std::shared_ptr<User> client, const std::vector<std::str
 	client->sendMessage(fullMsg);
 	close(client->getSocket());
 	_clients.erase(client->getSocket());
+}
+
+// helpers
+std::shared_ptr<User> Server::findUserByNick(const std::string& nickname)
+{
+	for (const auto& [fd, user] : _clients)
+	{
+		if (user->getNickname() == nickname)
+			return user;
+	}
+	return nullptr;
+}
+
+bool Server::requireRegistration(std::shared_ptr<User> client, const std::string& command)
+{
+	if (!client->isRegistered())
+	{
+		client->sendNumericReply(451, command + " :You have not registered");
+		return false;
+	}
+	return true;
+}
+
+Channel* Server::getChannelIfExists(const std::string& channelName, std::shared_ptr<User> client)
+{
+	if (_channels.count(channelName) == 0)
+	{
+		client->sendNumericReply(403, channelName + " :No such channel");
+		return nullptr;
+	}
+	return &_channels.at(channelName);
+}
+
+bool Server::requireChannelOperator(Channel& channel, std::shared_ptr<User> client, const std::string& channelName)
+{
+	if (!channel.isOperator(client->getNickname()))
+	{
+		client->sendNumericReply(482, channelName + " :You're not channel operator");
+		return false;
+	}
+	return true;
 }
 

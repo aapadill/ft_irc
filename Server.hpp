@@ -57,6 +57,12 @@ class Server
 		void	handlePART(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params);
 
+		// helpers
+		std::shared_ptr<User>	findUserByNick(const std::string& nickname);
+		bool					requireRegistration(std::shared_ptr<User> client, const std::string& command);
+		Channel*				getChannelIfExists(const std::string& channelName, std::shared_ptr<User> client);
+		bool					requireChannelOperator(Channel& channel, std::shared_ptr<User> client, const std::string& channelName);
+
 	public:
 		Server(int port, std::string const &password);
 		~Server();
