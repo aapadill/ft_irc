@@ -430,7 +430,7 @@ void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::str
 		client->sendNumericReply(451, "USER :You have not registered (missing PASS)");
 		return;
 	}
-	if (params.size() < 4 || params[3].empty() || params[3][0] != ':')
+	if (params.size() < 4 || params[3].empty() /*|| params[3][0] != ':'*/)
 	{
 		client->sendNumericReply(461, "USER :Not enough parameters");
 		return;
