@@ -12,7 +12,7 @@
 
 #include "User.hpp"
 
-User::User(std::string nick, int sock) : _nickname(std::move(nick)), _socket(sock), _authenticated(false), _registered(false)
+User::User(std::string nick, int sock) : _nickname(std::move(nick)), _socket(sock), _authenticated(false), _registered(false), _hasSetNick(false)
 {
     // should we initialize these? 
     _username = "";
@@ -52,7 +52,7 @@ bool User::isRegistered() const
 
 void	User::checkRegisteration()
 {
-	if (isAuthenticated() && !isRegistered() && !_nickname.empty() && !_username.empty())
+	if (isAuthenticated() && !isRegistered() && _hasSetNick && !_username.empty())
 	{
 		setRegistered(true);
 		sendNumericReply(001, ":Welcome to the IRC Server " + _nickname);
@@ -65,6 +65,7 @@ void	User::checkRegisteration()
 void User::setNickname(const std::string& nick)
 {
     _nickname = nick;
+    _hasSetNick = true;  // Mark that user explicitly set a nickname
 }
 
 void User::setUsername(const std::string& user)

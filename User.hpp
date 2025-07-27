@@ -27,6 +27,7 @@ class User {
         int         _socket;
         bool        _authenticated;
         bool        _registered;
+        bool        _hasSetNick;  // flag to check if user has set a nickname
         std::string _buffer; //helpful to have the incoming data until a complete message is formed
     public:
     
