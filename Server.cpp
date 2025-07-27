@@ -55,6 +55,15 @@ void	Server::acceptNewClient()
 	std::string tempNick = "Guest" + std::to_string(client_fd); // Assign temporary nickname
 	_clients[client_fd] = std::make_shared<User>(tempNick, client_fd);
 
+	// Welcome banner
+	std::string banner =
+		"\033[34m"
+		"Welcome to the IRC server!\n"
+		"\033[0m"
+		"You need to login and register at first! Type HELP to see available commands.\n\n";
+	
+	send(client_fd, banner.c_str(), banner.length(), 0);
+
 	std::cout << "New client connected: FD " << client_fd << std::endl;
 }
 
@@ -105,6 +114,8 @@ void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &pa
 		handlePASS(client, params);
 		return;
 	}
+	else if (command == "HELP")
+		handleHELP(client, params);
 	else if (command == "KICK")
 		handleKICK(client, params);
 	else if (command == "INVITE")
@@ -178,6 +189,25 @@ void	Server::run() // Main server loop
 			i++;
 		}
 	}
+}
+
+void	Server::handleHELP(std::shared_ptr<User> client, const std::vector<std::string>&)
+{
+	std::string msg =
+		"Available commands:\n"
+		"PASS <password>			- Authenticate with server\n"
+		"NICK <name>			- Set nickname\n"
+		"USER <usern> x x :<realn>	- Set username and realname\n"
+		"JOIN <#chan>			- Join or create a channel\n"
+		"PART <#chan>			- Leave a channel\n"
+		"PRIVMSG <target> <msg>		- Send private message\n"
+		"NOTICE <target> <msg>		- Send notice\n"
+		"TOPIC <#chan> <topic>		- View/set topic\n"
+		"KICK <#chan> <nick>		- Kick user\n"
+		"MODE <#chan> +o/-o <nick>	- Set channel modes\n"
+		"QUIT <msg>			- Quit IRC\n";
+
+	client->sendMessage(msg);
 }
 
 void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::string>& params)

@@ -56,6 +56,7 @@ class Server
 		void	handleJOIN(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handlePART(std::shared_ptr<User> client, const std::vector<std::string>& params);
 		void	handleQUIT(std::shared_ptr<User> client, const std::vector<std::string>& params);
+		void	handleHELP(std::shared_ptr<User> client, const std::vector<std::string>&);
 
 		// helpers
 		std::shared_ptr<User>	findUserByNick(const std::string& nickname);
