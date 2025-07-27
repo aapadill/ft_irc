@@ -38,7 +38,10 @@ void	Server::setUpSocket()
 	struct pollfd server_pollfd = {_server_fd, POLLIN, 0};
 	_poll_fds.push_back(server_pollfd);
 
-	std::cout << "Server started on port " << _port << std::endl;
+	std::cout << "\n========================================\n";
+	std::cout << "    IRC Server Started\n";
+	std::cout << "    Port: " << _port << "\n";
+	std::cout << "========================================\n" << std::endl;
 }
 
 void	Server::acceptNewClient()
@@ -56,15 +59,20 @@ void	Server::acceptNewClient()
 	_clients[client_fd] = std::make_shared<User>(tempNick, client_fd);
 
 	// Welcome banner
-	std::string banner =
-		"\033[34m"
-		"Welcome to the IRC server!\n"
-		"\033[0m"
-		"You need to login and register at first! Type HELP to see available commands.\n\n";
+	std::string banner = 
+		"\n"
+		"========================================\n"
+		"     Welcome to the IRC Server\n"
+		"========================================\n"
+		"Please authenticate using:\n"
+		"  PASS <password>\n"
+		"  NICK <nickname>\n"
+		"  USER <username> 0 * :<realname>\n"
+		"========================================\n\n";
 	
 	send(client_fd, banner.c_str(), banner.length(), 0);
 
-	std::cout << "New client connected: FD " << client_fd << std::endl;
+	std::cout << "[+] Client connected (FD: " << client_fd << ")\n";
 }
 
 void	Server::handleClientInput(int client_fd)
@@ -79,9 +87,11 @@ void	Server::handleClientInput(int client_fd)
 
 	buffer[bytesRead] = '\0';
 	std::string input(buffer);
-	std::cout << "DEBUG!! handleClientInput called for FD: " << client_fd << std::endl;
-	std::cout << "DEBUG!! bytesRead = " << bytesRead << std::endl;
-	std::cout << "DEBUG!! input = " << input << std::endl;
+	if (DEBUG_MODE) {
+		std::cout << "[DEBUG] handleClientInput called for FD: " << client_fd << std::endl;
+		std::cout << "[DEBUG] bytesRead = " << bytesRead << std::endl;
+		std::cout << "[DEBUG] input = " << input << std::endl;
+	}
 
 	// add received data to user's buffer
 	_clients[client_fd]->appendToBuffer(input);
@@ -90,12 +100,14 @@ void	Server::handleClientInput(int client_fd)
 	while (_clients.count(client_fd) && _clients[client_fd]->hasCompleteMessage())
 	{
 		std::string completeMessage = _clients[client_fd]->extractFromBuffer();
-		std::cout << "DEBUG!! Processing complete message: " << completeMessage << std::endl;
+		if (DEBUG_MODE)
+			std::cout << "[DEBUG] Processing complete message: " << completeMessage << std::endl;
 		
 		auto parsed = _parser->parse(completeMessage);
 		if (!parsed)
 		{
-			std::cout << "DEBUG!! Parsing failed for message: " << completeMessage << std::endl;
+			if (DEBUG_MODE)
+				std::cout << "[DEBUG] Parsing failed for message: " << completeMessage << std::endl;
 			if (_clients.count(client_fd))
 				_clients[client_fd]->sendMessage("Error: Invalid command.");
 			continue;
@@ -160,7 +172,7 @@ void	Server::removeClient(int client_fd)
 	if (_clients.count(client_fd))
 	{
 		std::string nickname = _clients[client_fd]->getNickname();
-		std::cout << "Client disconnected: " << nickname << " FD " << client_fd << std::endl;
+		std::cout << "[-] Client disconnected: " << nickname << " (FD: " << client_fd << ")\n";
 		_clients.erase(client_fd);
 	}
 	close(client_fd);
