@@ -147,7 +147,8 @@ std::string	User::getCurrentDate() const
 
 bool	User::isValidNickname(const std::string& nickname)
 {
-	if (nickname.empty() || isdigit(nickname[0] || nickname[0] == '-'))
+	// wuppa missed a parenthesis
+	if (nickname.empty() || isdigit(nickname[0]) || nickname[0] == '-')
 		return false;
 	if (nickname.length() > 9)
 		return false;
