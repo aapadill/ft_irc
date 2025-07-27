@@ -1,8 +1,7 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-// Debug mode - set to false to disable debug output
-//const bool DEBUG_MODE = true;
+// set to false to disable debug output
 #define DEBUG_MODE 1
 
 # include <string>

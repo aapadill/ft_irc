@@ -52,20 +52,20 @@ bool User::isRegistered() const
 
 void	User::checkRegisteration()
 {
-	if (isAuthenticated() && !isRegistered() && _hasSetNick && !_username.empty())
+	if (isAuthenticated() && !isRegistered() && _hasSetNick && !_username.empty()) // replacing _nickname.empty() with _hasSetNick
 	{
 		setRegistered(true);
-		sendNumericReply(001, ":Welcome to the IRC Server " + _nickname);
-		sendNumericReply(002, ":Your host is ircserver, running version ft_irc");
+		sendNumericReply(001, ":Welcome to the IRC Server " + _nickname + "!" + _username + "@" + "localhost");
+		sendNumericReply(002, ":Your host is ircserver, running version ft_irc 1.0");
 		sendNumericReply(003, ":This server was created " + getCurrentDate());
-		sendNumericReply(004, ":irc.server.com ft_irc <supported user modes> <supported channel modes>");
+		sendNumericReply(004, ":irc.server.com ft_irc <supported user modes> itkol");
 	}
 }
 
 void User::setNickname(const std::string& nick)
 {
     _nickname = nick;
-    _hasSetNick = true;  // Mark that user explicitly set a nickname
+    _hasSetNick = true;  // user explicitly set a nickname
 }
 
 void User::setUsername(const std::string& user)

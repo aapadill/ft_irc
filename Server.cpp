@@ -68,6 +68,8 @@ void	Server::acceptNewClient()
 		"  PASS <password>\n"
 		"  NICK <nickname>\n"
 		"  USER <username> 0 * :<realname>\n"
+		"\n"
+		"Type HELP for available commands\n"
 		"========================================\n\n";
 	
 	send(client_fd, banner.c_str(), banner.length(), 0);
@@ -152,7 +154,7 @@ void	Server::dispatchCommand(std::shared_ptr<User> client, ParsedInput const &pa
 		handleQUIT(client, params);
 	else
 	{
-		client->sendNumericReply(421, parsed.command + " :Unknown command");
+		client->sendNumericReply(421, parsed.command + " :Unknown command. Try HELP for available commands");
 	}
 }
 
@@ -226,7 +228,7 @@ void Server::handleKICK(std::shared_ptr<User> client, const std::vector<std::str
 {
 	if (params.size() < 2)
 	{
-		client->sendNumericReply(461, "KICK :Not enough parameters");
+		client->sendNumericReply(461, "Usage:\tKICK #channel <user> :[reason]");
 		return;
 	}
 	
@@ -409,7 +411,7 @@ void	Server::handleNICK(std::shared_ptr<User> client, const std::vector<std::str
 {
 	if (!client->isAuthenticated())
 	{
-		client->sendNumericReply(451, "NICK :You have not registered (missing PASS)");
+		client->sendNumericReply(451, "NICK :You must authenticate first. Use: PASS <password>");
 		return;
 	}
 	if (params.empty())
@@ -459,7 +461,7 @@ void	Server::handleUSER(std::shared_ptr<User> client, const std::vector<std::str
 	}
 	if (params.size() < 4 || params[3].empty() /*|| params[3][0] != ':'*/)
 	{
-		client->sendNumericReply(461, "USER :Not enough parameters");
+		client->sendNumericReply(461, "Usage:\tUSER <username> 0 * :<realname>");
 		return;
 	}
 	if (client->isRegistered())
@@ -546,7 +548,7 @@ void	Server::handlePRIVMSG(std::shared_ptr<User> client, const std::vector<std::
 
 	if (params.size() < 2)
 	{
-		client->sendNumericReply(461, "PRIVMSG :Not enough parameters");
+		client->sendNumericReply(461, "Usage:\tPRIVMSG <target> :<message>");
 		return;
 	}
 
@@ -633,7 +635,7 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 
 	if (params.empty())
 	{
-		client->sendNumericReply(461, "JOIN :Not enough parameters");
+		client->sendNumericReply(461, "Usage:\tJOIN #channel [key]");
 		return;
 	}
 
@@ -668,6 +670,8 @@ void	Server::handleJOIN(std::shared_ptr<User> client, const std::vector<std::str
 		if (isNewChannel)
 		{
 			channel.addOperator(client->getNickname());
+			client->sendMessage(":irc.server.com NOTICE " + client->getNickname() + 
+				" :You have been made channel operator of " + channelName);
 		}
 		
 		// send JOIN message to all users in channel including the joiner
