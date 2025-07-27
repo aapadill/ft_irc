@@ -1,1 +1,5 @@
+*.o
+*.sh
+*.md
 .DS_Store
+*.txt
